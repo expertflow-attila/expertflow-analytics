@@ -8,13 +8,17 @@ import {
   getTopCities,
   getTopPages,
   getCustomEvents,
+  getTrafficSourcesByPage,
+  getDevicesByPage,
+  getBrowsersByPage,
+  getEventsByPage,
 } from "@/lib/posthog";
 import { Dashboard } from "@/components/Dashboard";
 
 export const revalidate = 300;
 
 export default async function Home() {
-  const [overview, pages, daily, sources, devices, browsers, cities, topPages, events] = await Promise.all([
+  const [overview, pages, daily, sources, devices, browsers, cities, topPages, events, sourcesByPage, devicesByPage, browsersByPage, eventsByPage] = await Promise.all([
     getOverviewStats(30),
     getPageStats(30),
     getDailyTraffic(30),
@@ -24,6 +28,10 @@ export default async function Home() {
     getTopCities(30),
     getTopPages(30),
     getCustomEvents(30),
+    getTrafficSourcesByPage(30),
+    getDevicesByPage(30),
+    getBrowsersByPage(30),
+    getEventsByPage(30),
   ]);
 
   return (
@@ -37,6 +45,10 @@ export default async function Home() {
       cities={cities}
       topPages={topPages}
       events={events}
+      sourcesByPage={sourcesByPage}
+      devicesByPage={devicesByPage}
+      browsersByPage={browsersByPage}
+      eventsByPage={eventsByPage}
     />
   );
 }

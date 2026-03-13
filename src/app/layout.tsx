@@ -4,9 +4,9 @@ import { Instrument_Sans, Instrument_Serif, JetBrains_Mono } from 'next/font/goo
 import { ThemeProvider } from "@/components/theme-provider"
 import './globals.css'
 
-const instrumentSans = Instrument_Sans({ subsets: ["latin"], variable: '--font-instrument' });
-const instrumentSerif = Instrument_Serif({ subsets: ["latin"], weight: "400", variable: '--font-instrument-serif' });
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin"], variable: '--font-jetbrains' });
+const instrumentSans = Instrument_Sans({ subsets: ["latin", "latin-ext"], variable: '--font-instrument' });
+const instrumentSerif = Instrument_Serif({ subsets: ["latin", "latin-ext"], weight: "400", variable: '--font-instrument-serif' });
+const jetbrainsMono = JetBrains_Mono({ subsets: ["latin", "latin-ext"], variable: '--font-jetbrains' });
 
 export const metadata: Metadata = {
   title: 'Expert Flow — Analytics',

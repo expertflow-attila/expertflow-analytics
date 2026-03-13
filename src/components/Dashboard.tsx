@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import type {
@@ -272,13 +272,28 @@ function SectionHeader({ num, title, subtitle }: { num: string; title: string; s
 // ============================================================
 
 const PAGE_LABELS: Record<string, string> = {
-  "expertflow-ugyfelszerzes.vercel.app": "Ugyfelszerzes",
-  "expertflow-ugyfelkezeles.vercel.app": "Ugyfelkezeles",
-  "expertflow-hattermukodes.vercel.app": "Hattermukodes",
+  "expertflow-ugyfelszerzes.vercel.app": "Ügyfélszerzés",
+  "expertflow-ugyfelkezeles.vercel.app": "Ügyfélkezelés",
+  "expertflow-hattermukodes.vercel.app": "Háttérműködés",
   "ai-ready-kurzus.vercel.app": "AI Ready Kurzus",
 };
 
 const PAGE_SHORT: Record<string, string> = {
+  "expertflow-ugyfelszerzes.vercel.app": "SALES",
+  "expertflow-ugyfelkezeles.vercel.app": "START",
+  "expertflow-hattermukodes.vercel.app": "FLOW",
+  "ai-ready-kurzus.vercel.app": "AI Ready",
+};
+
+const PAGE_HOSTS = [
+  "expertflow-ugyfelszerzes.vercel.app",
+  "expertflow-ugyfelkezeles.vercel.app",
+  "expertflow-hattermukodes.vercel.app",
+  "ai-ready-kurzus.vercel.app",
+];
+
+const PAGE_FILTER_LABELS: Record<string, string> = {
+  all: "Összes",
   "expertflow-ugyfelszerzes.vercel.app": "SALES",
   "expertflow-ugyfelkezeles.vercel.app": "START",
   "expertflow-hattermukodes.vercel.app": "FLOW",
@@ -306,6 +321,31 @@ function ThemeToggle() {
 }
 
 // ============================================================
+// Page Filter Tabs
+// ============================================================
+
+function PageFilterTabs({ selected, onChange }: { selected: string; onChange: (v: string) => void }) {
+  const options = ["all", ...PAGE_HOSTS];
+  return (
+    <div className="flex flex-wrap gap-2 mb-12">
+      {options.map(opt => (
+        <button
+          key={opt}
+          onClick={() => onChange(opt)}
+          className={`px-4 py-2 rounded-lg border text-sm font-mono transition-all duration-200 ${
+            selected === opt
+              ? "bg-foreground text-background border-foreground"
+              : "border-foreground/10 text-muted-foreground hover:border-foreground/30 hover:text-foreground"
+          }`}
+        >
+          {PAGE_FILTER_LABELS[opt]}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ============================================================
 // Dashboard
 // ============================================================
 
@@ -319,28 +359,56 @@ interface DashboardProps {
   cities: CityData[];
   topPages: PagePerformance[];
   events: EventData[];
+  sourcesByPage: Record<string, TrafficSource[]>;
+  devicesByPage: Record<string, DeviceData[]>;
+  browsersByPage: Record<string, BrowserData[]>;
+  eventsByPage: Record<string, EventData[]>;
 }
 
-export function Dashboard({ overview, pages, daily, sources, devices, browsers, cities, topPages, events }: DashboardProps) {
+export function Dashboard({
+  overview,
+  pages,
+  daily,
+  sources,
+  devices,
+  browsers,
+  cities,
+  topPages,
+  events,
+  sourcesByPage,
+  devicesByPage,
+  browsersByPage,
+  eventsByPage,
+}: DashboardProps) {
+  const [selectedPage, setSelectedPage] = useState<string>("all");
+
   const dailyPvs = daily.map(d => d.pageviews);
   const dailyVis = daily.map(d => d.visitors);
-  const maxSourceCount = Math.max(...sources.map(s => s.count), 1);
-  const maxCityCount = Math.max(...cities.map(c => c.count), 1);
-  const maxEventCount = Math.max(...events.map(e => e.count), 1);
   const maxPagePv = Math.max(...pages.map(p => p.pageviews), 1);
-  const maxBrowserCount = Math.max(...browsers.map(b => b.count), 1);
+
+  // Compute active data based on filter
+  const activeSources = selectedPage === "all" ? sources : (sourcesByPage[selectedPage] || sources);
+  const activeDevices = selectedPage === "all" ? devices : (devicesByPage[selectedPage] || devices);
+  const activeBrowsers = selectedPage === "all" ? browsers : (browsersByPage[selectedPage] || browsers);
+  const activeEvents = selectedPage === "all" ? events : (eventsByPage[selectedPage] || events);
+  const activeTopPages = selectedPage === "all" ? topPages : topPages.filter(p => p.host === selectedPage);
+
+  const maxSourceCount = Math.max(...activeSources.map(s => s.count), 1);
+  const maxCityCount = Math.max(...cities.map(c => c.count), 1);
+  const maxEventCount = Math.max(...activeEvents.map(e => e.count), 1);
+  const maxBrowserCount = Math.max(...activeBrowsers.map(b => b.count), 1);
 
   const donutPages = pages.map(p => ({
     label: PAGE_SHORT[p.page] || p.page,
     value: p.pageviews,
   }));
 
-  const donutDevices = devices.map(d => ({
+  const donutDevices = activeDevices.map(d => ({
     label: d.device,
     value: d.count,
   }));
 
-  const donutSources = sources.map(s => ({
+  const donutSources = activeSources.map(s => ({
     label: s.source,
     value: s.count,
   }));
@@ -362,7 +430,7 @@ export function Dashboard({ overview, pages, daily, sources, devices, browsers, 
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
               <span className="w-2 h-2 rounded-full bg-green-500 pulse-soft" />
-              Utolso 45 nap
+              Utolsó 45 nap
             </div>
             <ThemeToggle />
           </div>
@@ -379,38 +447,77 @@ export function Dashboard({ overview, pages, daily, sources, devices, browsers, 
           <h1 className="text-5xl lg:text-7xl font-display tracking-tight">
             Landing
             <br />
-            <span className="text-muted-foreground">Teljesitmeny.</span>
+            <span className="text-muted-foreground">Teljesítmény.</span>
           </h1>
           <p className="text-lg text-muted-foreground mt-4 max-w-lg">
-            Minden adat, egy helyen. 4 landing oldal, 45 nap, valos latogatoi viselkedes.
+            Minden adat, egy helyen. 4 landing oldal, 45 nap, valós látogatói viselkedés.
           </p>
         </div>
       </header>
 
       <main className="max-w-[1400px] mx-auto px-6 lg:px-12 relative z-10">
 
-        {/* =============== Section 01 — Attekintes =============== */}
+        {/* =============== Section 00 — Kampány teljesítmény =============== */}
         <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="01" title="Attekintes" subtitle="Osszesitett teljesitmenymutatov" />
+          <SectionHeader num="00" title="Kampány teljesítmény" subtitle="Egyedi landing oldalak összehasonlítása" />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {pages.map((p) => {
+              const label = PAGE_LABELS[p.page] || p.page;
+              const tag = PAGE_SHORT[p.page] || "";
+              // Build a mini sparkline from the page's share of daily data
+              const sparkData = daily.slice(-14).map(d => Math.round(d.pageviews * (p.pageviews / overview.totalPageviews)));
+              return (
+                <div
+                  key={p.page}
+                  className={`border rounded-lg p-6 transition-all duration-200 cursor-pointer ${
+                    selectedPage === p.page
+                      ? "border-foreground bg-foreground/5"
+                      : "border-foreground/10 hover:border-foreground/30"
+                  }`}
+                  onClick={() => setSelectedPage(selectedPage === p.page ? "all" : p.page)}
+                >
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="font-mono text-xs text-muted-foreground px-2 py-0.5 border border-foreground/10 rounded-lg">{tag}</span>
+                    <SparkLine data={sparkData} className="w-16 h-5 text-foreground/40" />
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-1">{label}</p>
+                  <div className="flex items-baseline gap-3">
+                    <span className="font-mono text-2xl">{p.pageviews.toLocaleString("hu-HU")}</span>
+                    <span className="text-xs text-muted-foreground">megtekintés</span>
+                  </div>
+                  <div className="mt-1">
+                    <span className="font-mono text-sm text-muted-foreground">{p.visitors.toLocaleString("hu-HU")}</span>
+                    <span className="text-xs text-muted-foreground ml-1">látogató</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* =============== Section 01 — Áttekintés =============== */}
+        <section className="py-24 lg:py-32 border-b border-foreground/10">
+          <SectionHeader num="01" title="Áttekintés" subtitle="Összesített teljesítménymutatók" />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-foreground/10">
-            {/* Oldalmegtekintes */}
+            {/* Oldalmegtekintés */}
             <div className="bg-background p-8 lg:p-12">
               <div className="text-5xl lg:text-7xl">
                 <AnimatedCounter end={overview.totalPageviews} />
               </div>
               <div className="mt-3 flex items-center justify-between">
-                <span className="text-lg text-muted-foreground">Oldalmegtekintes</span>
+                <span className="text-lg text-muted-foreground">Oldalmegtekintés</span>
                 <SparkLine data={last7Pv} className="w-20 h-6 text-foreground/40" />
               </div>
             </div>
-            {/* Egyedi latogato */}
+            {/* Egyedi látogató */}
             <div className="bg-background p-8 lg:p-12">
               <div className="text-5xl lg:text-7xl">
                 <AnimatedCounter end={overview.totalVisitors} />
               </div>
               <div className="mt-3 flex items-center justify-between">
-                <span className="text-lg text-muted-foreground">Egyedi latogato</span>
+                <span className="text-lg text-muted-foreground">Egyedi látogató</span>
                 <SparkLine data={last7Vis} className="w-20 h-6 text-foreground/40" />
               </div>
             </div>
@@ -424,13 +531,13 @@ export function Dashboard({ overview, pages, daily, sources, devices, browsers, 
                 <SparkLine data={last7Sessions} className="w-20 h-6 text-foreground/40" />
               </div>
             </div>
-            {/* Aktiv landing oldal */}
+            {/* Aktív landing oldal */}
             <div className="bg-background p-8 lg:p-12">
               <div className="text-5xl lg:text-7xl">
                 <AnimatedCounter end={4} />
               </div>
               <div className="mt-3">
-                <span className="text-lg text-muted-foreground">Aktiv landing oldal</span>
+                <span className="text-lg text-muted-foreground">Aktív landing oldal</span>
               </div>
             </div>
           </div>
@@ -438,14 +545,14 @@ export function Dashboard({ overview, pages, daily, sources, devices, browsers, 
 
         {/* =============== Section 02 — Forgalom trend =============== */}
         <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="02" title="Forgalom trend" subtitle="Napi oldalmegtekintesek es latogatok" />
+          <SectionHeader num="02" title="Forgalom trend" subtitle="Napi oldalmegtekintések és látogatók" />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Line chart */}
-            <div className="lg:col-span-2 border border-foreground/10 rounded-sm p-6 lg:p-8">
+            <div className="lg:col-span-2 border border-foreground/10 rounded-lg p-6 lg:p-8">
               <div className="flex items-center justify-between mb-6">
                 <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider">
-                  Megtekintesek / nap
+                  Megtekintések / nap
                 </span>
                 <span className="font-mono text-xs text-muted-foreground">
                   {daily[0]?.date} — {daily[daily.length - 1]?.date}
@@ -454,33 +561,39 @@ export function Dashboard({ overview, pages, daily, sources, devices, browsers, 
               <LineChart data={daily} height={240} />
               <div className="flex gap-6 mt-4">
                 <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="w-4 h-0.5 bg-foreground rounded" /> Megtekintesek
+                  <span className="w-4 h-0.5 bg-foreground rounded" /> Megtekintések
                 </span>
                 <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="w-4 h-0.5 bg-foreground/25 rounded" /> Latogatok
+                  <span className="w-4 h-0.5 bg-foreground/25 rounded" /> Látogatók
                 </span>
               </div>
             </div>
 
             {/* Page distribution donut */}
-            <div className="border border-foreground/10 rounded-sm p-6 lg:p-8">
+            <div className="border border-foreground/10 rounded-lg p-6 lg:p-8">
               <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
-                Oldal eloszlas
+                Oldal eloszlás
               </span>
               <DonutChart data={donutPages} size={130} />
             </div>
           </div>
         </section>
 
+        {/* =============== Page Filter =============== */}
+        <div className="pt-24 lg:pt-32">
+          <PageFilterTabs selected={selectedPage} onChange={setSelectedPage} />
+        </div>
+
         {/* =============== Section 03 — Landing oldalak =============== */}
-        <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="03" title="Landing oldalak" subtitle="Teljesitmeny osszehasonlitas" />
+        <section className="pb-24 lg:pb-32 border-b border-foreground/10">
+          <SectionHeader num="03" title="Landing oldalak" subtitle="Teljesítmény összehasonlítás" />
 
           <div>
             {pages.map((p, index) => {
               const label = PAGE_LABELS[p.page] || p.page;
               const tag = PAGE_SHORT[p.page] || "";
               const pct = (p.pageviews / maxPagePv) * 100;
+              const isHighlighted = selectedPage === p.page;
               return (
                 <PageBarRow
                   key={p.page}
@@ -491,40 +604,41 @@ export function Dashboard({ overview, pages, daily, sources, devices, browsers, 
                   visitors={p.visitors}
                   percentage={pct}
                   delay={index * 100}
+                  highlighted={isHighlighted}
                 />
               );
             })}
           </div>
         </section>
 
-        {/* =============== Section 04 — Forgalom reszletei =============== */}
+        {/* =============== Section 04 — Forgalom részletei =============== */}
         <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="04" title="Forgalom reszletei" subtitle="Forrasok, eszkozok, bongeszok" />
+          <SectionHeader num="04" title="Forgalom részletei" subtitle="Források, eszközök, böngészők" />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Sources donut */}
-            <div className="border border-foreground/10 rounded-sm p-6 lg:p-8">
+            <div className="border border-foreground/10 rounded-lg p-6 lg:p-8">
               <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
-                Forgalmi forrasok
+                Forgalmi források
               </span>
               <DonutChart data={donutSources} size={130} />
             </div>
 
             {/* Devices donut */}
-            <div className="border border-foreground/10 rounded-sm p-6 lg:p-8">
+            <div className="border border-foreground/10 rounded-lg p-6 lg:p-8">
               <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
-                Eszkozok
+                Eszközök
               </span>
               <DonutChart data={donutDevices} size={130} />
             </div>
 
             {/* Browsers bar chart */}
-            <div className="border border-foreground/10 rounded-sm p-6 lg:p-8">
+            <div className="border border-foreground/10 rounded-lg p-6 lg:p-8">
               <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
-                Bongeszok
+                Böngészők
               </span>
               <div className="space-y-4">
-                {browsers.map((b, i) => (
+                {activeBrowsers.map((b, i) => (
                   <HorizontalBar key={b.browser} label={b.browser} value={b.count} max={maxBrowserCount} delay={i * 80} />
                 ))}
               </div>
@@ -532,15 +646,15 @@ export function Dashboard({ overview, pages, daily, sources, devices, browsers, 
           </div>
         </section>
 
-        {/* =============== Section 05 — Reszletes bontas =============== */}
+        {/* =============== Section 05 — Részletes bontás =============== */}
         <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="05" title="Reszletes bontas" subtitle="Varosok es legnepszerubb oldalak" />
+          <SectionHeader num="05" title="Részletes bontás" subtitle="Városok és legnépszerűbb oldalak" />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Top cities */}
-            <div className="border border-foreground/10 rounded-sm p-6 lg:p-8">
+            <div className="border border-foreground/10 rounded-lg p-6 lg:p-8">
               <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
-                Top varosok
+                Top városok
               </span>
               <div className="space-y-4">
                 {cities.map((c, i) => (
@@ -550,12 +664,12 @@ export function Dashboard({ overview, pages, daily, sources, devices, browsers, 
             </div>
 
             {/* Top pages table */}
-            <div className="border border-foreground/10 rounded-sm p-6 lg:p-8">
+            <div className="border border-foreground/10 rounded-lg p-6 lg:p-8">
               <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
                 Top oldalak
               </span>
               <div className="space-y-0">
-                {topPages.map((p, i) => (
+                {activeTopPages.map((p, i) => (
                   <div key={`${p.host}${p.path}`}
                     className="flex items-center gap-4 py-3 border-b border-foreground/5 last:border-0">
                     <span className="font-mono text-xs text-muted-foreground w-6">{String(i + 1).padStart(2, "0")}</span>
@@ -574,13 +688,13 @@ export function Dashboard({ overview, pages, daily, sources, devices, browsers, 
           </div>
         </section>
 
-        {/* =============== Section 06 — Egyedi esemenyek =============== */}
-        {events.length > 0 && (
+        {/* =============== Section 06 — Egyedi események =============== */}
+        {activeEvents.length > 0 && (
           <section className="py-24 lg:py-32 border-b border-foreground/10">
-            <SectionHeader num="06" title="Egyedi esemenyek" subtitle="CTA kattintasok es interakciok" />
+            <SectionHeader num="06" title="Egyedi események" subtitle="CTA kattintások és interakciók" />
 
             <div className="space-y-4">
-              {events.map((e, i) => (
+              {activeEvents.map((e, i) => (
                 <HorizontalBar key={e.event} label={e.event} value={e.count} max={maxEventCount} delay={i * 60} />
               ))}
             </div>
@@ -613,6 +727,7 @@ function PageBarRow({
   visitors,
   percentage,
   delay,
+  highlighted = false,
 }: {
   number: string;
   label: string;
@@ -621,6 +736,7 @@ function PageBarRow({
   visitors: number;
   percentage: number;
   delay: number;
+  highlighted?: boolean;
 }) {
   const { ref, isVisible } = useInView(0.2);
 
@@ -629,7 +745,7 @@ function PageBarRow({
       ref={ref}
       className={`flex flex-col lg:flex-row gap-4 lg:gap-8 py-8 lg:py-12 border-b border-foreground/10 transition-all duration-700 ${
         isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-      }`}
+      } ${highlighted ? "bg-foreground/5 px-6 -mx-6 rounded-lg" : ""}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {/* Number */}
@@ -641,7 +757,7 @@ function PageBarRow({
       <div className="flex-1">
         <div className="flex items-baseline gap-3 mb-4">
           <h3 className="text-2xl lg:text-3xl font-display">{label}</h3>
-          <span className="font-mono text-xs text-muted-foreground px-2 py-0.5 border border-foreground/10 rounded-sm">{tag}</span>
+          <span className="font-mono text-xs text-muted-foreground px-2 py-0.5 border border-foreground/10 rounded-lg">{tag}</span>
         </div>
 
         {/* Bar */}
@@ -658,11 +774,11 @@ function PageBarRow({
         <div className="flex gap-8">
           <div>
             <span className="font-mono text-2xl">{pageviews.toLocaleString("hu-HU")}</span>
-            <span className="text-sm text-muted-foreground ml-2">megtekintes</span>
+            <span className="text-sm text-muted-foreground ml-2">megtekintés</span>
           </div>
           <div>
             <span className="font-mono text-2xl">{visitors.toLocaleString("hu-HU")}</span>
-            <span className="text-sm text-muted-foreground ml-2">latogato</span>
+            <span className="text-sm text-muted-foreground ml-2">látogató</span>
           </div>
         </div>
       </div>

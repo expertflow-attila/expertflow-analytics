@@ -149,7 +149,7 @@ export async function getTrafficSources(_days: number = 30): Promise<TrafficSour
     { source: "Facebook", percentage: 15 },
     { source: "LinkedIn", percentage: 12 },
     { source: "Instagram", percentage: 5 },
-    { source: "Egyeb", percentage: 5 },
+    { source: "Egyéb", percentage: 5 },
   ];
   return sources.map(s => ({
     source: s.source,
@@ -193,7 +193,7 @@ export async function getBrowserBreakdown(_days: number = 30): Promise<BrowserDa
     { browser: "Safari", percentage: 22 },
     { browser: "Firefox", percentage: 10 },
     { browser: "Edge", percentage: 8 },
-    { browser: "Egyeb", percentage: 5 },
+    { browser: "Egyéb", percentage: 5 },
   ];
   return browsers.map(b => ({
     browser: b.browser,
@@ -220,7 +220,7 @@ export async function getTopCities(_days: number = 30): Promise<CityData[]> {
     { city: "Wien", pct: 4 },
     { city: "Bratislava", pct: 3 },
     { city: "Munchen", pct: 2 },
-    { city: "Egyeb", pct: 10 },
+    { city: "Egyéb", pct: 10 },
   ];
   return cities.map(c => ({
     city: c.city,
@@ -276,6 +276,107 @@ export async function getCustomEvents(_days: number = 30): Promise<EventData[]> 
     { event: "faq_open", count: 567 },
     { event: "testimonial_view", count: 1204 },
   ];
+}
+
+export async function getTrafficSourcesByPage(_days: number = 30): Promise<Record<string, TrafficSource[]>> {
+  const pages = await getPageStats();
+  const result: Record<string, TrafficSource[]> = {};
+
+  const sourceVariations: Record<string, number[]> = {
+    "expertflow-ugyfelszerzes.vercel.app": [42, 22, 14, 12, 5, 5],
+    "expertflow-ugyfelkezeles.vercel.app": [35, 28, 16, 11, 5, 5],
+    "expertflow-hattermukodes.vercel.app": [32, 30, 12, 14, 6, 6],
+    "ai-ready-kurzus.vercel.app": [40, 20, 18, 10, 7, 5],
+  };
+
+  for (const page of pages) {
+    const total = page.pageviews;
+    const pcts = sourceVariations[page.page] || [38, 25, 15, 12, 5, 5];
+    const sourceNames = ["Google", "Direct", "Facebook", "LinkedIn", "Instagram", "Egyéb"];
+    result[page.page] = sourceNames.map((source, i) => ({
+      source,
+      count: Math.round(total * pcts[i] / 100),
+      percentage: pcts[i],
+    }));
+  }
+  return result;
+}
+
+export async function getDevicesByPage(_days: number = 30): Promise<Record<string, DeviceData[]>> {
+  const pages = await getPageStats();
+  const result: Record<string, DeviceData[]> = {};
+
+  const deviceVariations: Record<string, number[]> = {
+    "expertflow-ugyfelszerzes.vercel.app": [58, 37, 5],
+    "expertflow-ugyfelkezeles.vercel.app": [65, 30, 5],
+    "expertflow-hattermukodes.vercel.app": [70, 25, 5],
+    "ai-ready-kurzus.vercel.app": [55, 38, 7],
+  };
+
+  for (const page of pages) {
+    const total = page.pageviews;
+    const pcts = deviceVariations[page.page] || [62, 33, 5];
+    const deviceNames = ["Desktop", "Mobile", "Tablet"];
+    result[page.page] = deviceNames.map((device, i) => ({
+      device,
+      count: Math.round(total * pcts[i] / 100),
+      percentage: pcts[i],
+    }));
+  }
+  return result;
+}
+
+export async function getBrowsersByPage(_days: number = 30): Promise<Record<string, BrowserData[]>> {
+  const pages = await getPageStats();
+  const result: Record<string, BrowserData[]> = {};
+
+  for (const page of pages) {
+    const total = page.pageviews;
+    const browsers = [
+      { browser: "Chrome", percentage: 52 + Math.round((rng() - 0.5) * 10) },
+      { browser: "Safari", percentage: 22 + Math.round((rng() - 0.5) * 6) },
+      { browser: "Firefox", percentage: 10 + Math.round((rng() - 0.5) * 4) },
+      { browser: "Edge", percentage: 8 + Math.round((rng() - 0.5) * 4) },
+    ];
+    const remaining = 100 - browsers.reduce((s, b) => s + b.percentage, 0);
+    browsers.push({ browser: "Egyéb", percentage: remaining });
+
+    result[page.page] = browsers.map(b => ({
+      browser: b.browser,
+      count: Math.round(total * b.percentage / 100),
+      percentage: b.percentage,
+    }));
+  }
+  return result;
+}
+
+export async function getEventsByPage(_days: number = 30): Promise<Record<string, EventData[]>> {
+  const pages = await getPageStats();
+  const result: Record<string, EventData[]> = {};
+
+  const baseEvents = [
+    { event: "cta_click", base: 1842 },
+    { event: "section_view", base: 4521 },
+    { event: "pricing_view", base: 1356 },
+    { event: "form_start", base: 687 },
+    { event: "form_submit", base: 423 },
+    { event: "video_play", base: 312 },
+    { event: "scroll_75", base: 2891 },
+    { event: "social_click", base: 198 },
+    { event: "faq_open", base: 567 },
+    { event: "testimonial_view", base: 1204 },
+  ];
+
+  const totalPv = pages.reduce((s, p) => s + p.pageviews, 0);
+
+  for (const page of pages) {
+    const ratio = page.pageviews / totalPv;
+    result[page.page] = baseEvents.map(e => ({
+      event: e.event,
+      count: Math.round(e.base * ratio * (0.8 + rng() * 0.4)),
+    }));
+  }
+  return result;
 }
 
 export interface PerPageDaily {
