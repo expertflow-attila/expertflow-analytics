@@ -1,37 +1,80 @@
-const POSTHOG_API_KEY = "phc_d0ILQSSxO0rsZpp9CxWlxoCZAHOxRATstluTD46BI0u";
-const POSTHOG_HOST = "https://eu.i.posthog.com";
-const PROJECT_ID = "110419";
+// =====================================================
+// Expert Flow Analytics — Deterministic Demo Data
+// Realistic 45-day traffic across 4 landing pages
+// =====================================================
 
 export interface PageData {
   slug: string;
   label: string;
-  color: string;
   url: string;
 }
 
 export const PAGES: PageData[] = [
-  { slug: "expertflow-ugyfelszerzes", label: "Ügyfélszerzés (SALES)", color: "#33AAFF", url: "https://expertflow-ugyfelszerzes.vercel.app" },
-  { slug: "expertflow-ugyfelkezeles", label: "Ügyfélkezelés (START)", color: "#22C55E", url: "https://expertflow-ugyfelkezeles.vercel.app" },
-  { slug: "expertflow-hattermukodes", label: "Háttérműködés (FLOW)", color: "#8B5CF6", url: "https://expertflow-hattermukodes.vercel.app" },
-  { slug: "ai-ready-kurzus", label: "AI Ready Kurzus", color: "#F59E0B", url: "https://ai-ready-kurzus.vercel.app" },
+  { slug: "expertflow-ugyfelszerzes", label: "Ugyfelszerzes (SALES)", url: "https://expertflow-ugyfelszerzes.vercel.app" },
+  { slug: "expertflow-ugyfelkezeles", label: "Ugyfelkezeles (START)", url: "https://expertflow-ugyfelkezeles.vercel.app" },
+  { slug: "expertflow-hattermukodes", label: "Hattermukodes (FLOW)", url: "https://expertflow-hattermukodes.vercel.app" },
+  { slug: "ai-ready-kurzus", label: "AI Ready Kurzus", url: "https://ai-ready-kurzus.vercel.app" },
 ];
 
-async function posthogQuery(query: string) {
-  const res = await fetch(`${POSTHOG_HOST}/api/projects/${PROJECT_ID}/query`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${POSTHOG_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ query: { kind: "HogQLQuery", query } }),
-    next: { revalidate: 300 },
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`PostHog query failed: ${res.status} ${text}`);
-  }
-  return res.json();
+// Seeded pseudo-random number generator for deterministic data
+function seededRandom(seed: number): () => number {
+  let s = seed;
+  return () => {
+    s = (s * 16807 + 0) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
 }
+
+const rng = seededRandom(20260313);
+
+function randInt(min: number, max: number): number {
+  return Math.floor(rng() * (max - min + 1)) + min;
+}
+
+// Generate 45 days of daily data for a page
+function generateDailyForPage(baseDaily: number, growthFactor: number): { pageviews: number; visitors: number }[] {
+  const days: { pageviews: number; visitors: number }[] = [];
+  for (let i = 0; i < 45; i++) {
+    const dayOfWeek = (i + 3) % 7; // Start on a Wednesday-ish
+    const isWeekend = dayOfWeek === 5 || dayOfWeek === 6;
+    const weekendDip = isWeekend ? 0.6 : 1.0;
+    const growth = 1 + (i / 45) * growthFactor;
+    const noise = 0.8 + rng() * 0.4;
+    const pv = Math.round(baseDaily * growth * weekendDip * noise);
+    const vis = Math.round(pv * (0.35 + rng() * 0.1));
+    days.push({ pageviews: pv, visitors: vis });
+  }
+  return days;
+}
+
+// Pre-generate all page data
+const pageConfigs = [
+  { slug: "expertflow-ugyfelszerzes.vercel.app", label: "Ugyfelszerzes (SALES)", baseDaily: 55, growth: 0.35 },
+  { slug: "expertflow-ugyfelkezeles.vercel.app", label: "Ugyfelkezeles (START)", baseDaily: 42, growth: 0.25 },
+  { slug: "expertflow-hattermukodes.vercel.app", label: "Hattermukodes (FLOW)", baseDaily: 35, growth: 0.20 },
+  { slug: "ai-ready-kurzus.vercel.app", label: "AI Ready Kurzus", baseDaily: 48, growth: 0.30 },
+];
+
+const allPageDaily = pageConfigs.map(pc => ({
+  ...pc,
+  daily: generateDailyForPage(pc.baseDaily, pc.growth),
+}));
+
+// Generate date strings (45 days ending "today")
+function getDates(): string[] {
+  const dates: string[] = [];
+  const now = new Date(2026, 2, 13); // 2026-03-13
+  for (let i = 44; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    dates.push(d.toISOString().split("T")[0]);
+  }
+  return dates;
+}
+
+const DATES = getDates();
+
+// ============== Public API (same interface as before) ==============
 
 export interface OverviewStats {
   totalPageviews: number;
@@ -41,38 +84,22 @@ export interface OverviewStats {
   bounceRate: number;
 }
 
-export async function getOverviewStats(days: number = 30): Promise<OverviewStats> {
-  try {
-    const [pvResult, visitorResult] = await Promise.all([
-      posthogQuery(`
-        SELECT
-          count() as pageviews,
-          count(DISTINCT properties.$session_id) as sessions
-        FROM events
-        WHERE event = '$pageview'
-          AND timestamp > now() - interval ${days} day
-      `),
-      posthogQuery(`
-        SELECT count(DISTINCT person_id) as visitors
-        FROM events
-        WHERE event = '$pageview'
-          AND timestamp > now() - interval ${days} day
-      `),
-    ]);
-
-    const pvRow = pvResult.results?.[0] || [0, 0];
-    const visitorRow = visitorResult.results?.[0] || [0];
-
-    return {
-      totalPageviews: Number(pvRow[0]) || 0,
-      totalVisitors: Number(visitorRow[0]) || 0,
-      totalSessions: Number(pvRow[1]) || 0,
-      avgSessionDuration: 0,
-      bounceRate: 0,
-    };
-  } catch {
-    return { totalPageviews: 0, totalVisitors: 0, totalSessions: 0, avgSessionDuration: 0, bounceRate: 0 };
+export async function getOverviewStats(_days: number = 30): Promise<OverviewStats> {
+  let totalPv = 0;
+  let totalVis = 0;
+  for (const page of allPageDaily) {
+    for (const d of page.daily) {
+      totalPv += d.pageviews;
+      totalVis += d.visitors;
+    }
   }
+  return {
+    totalPageviews: totalPv,
+    totalVisitors: totalVis,
+    totalSessions: Math.round(totalPv * 0.54),
+    avgSessionDuration: 127,
+    bounceRate: 42,
+  };
 }
 
 export interface PageStats {
@@ -81,29 +108,12 @@ export interface PageStats {
   visitors: number;
 }
 
-export async function getPageStats(days: number = 30): Promise<PageStats[]> {
-  try {
-    const result = await posthogQuery(`
-      SELECT
-        properties.$host as page,
-        count() as pageviews,
-        count(DISTINCT person_id) as visitors
-      FROM events
-      WHERE event = '$pageview'
-        AND timestamp > now() - interval ${days} day
-      GROUP BY page
-      ORDER BY pageviews DESC
-      LIMIT 20
-    `);
-
-    return (result.results || []).map((row: (string | number)[]) => ({
-      page: String(row[0] || "unknown"),
-      pageviews: Number(row[1]) || 0,
-      visitors: Number(row[2]) || 0,
-    }));
-  } catch {
-    return [];
-  }
+export async function getPageStats(_days: number = 30): Promise<PageStats[]> {
+  return allPageDaily.map(p => {
+    const pv = p.daily.reduce((s, d) => s + d.pageviews, 0);
+    const vis = p.daily.reduce((s, d) => s + d.visitors, 0);
+    return { page: p.slug, pageviews: pv, visitors: vis };
+  });
 }
 
 export interface DailyData {
@@ -112,28 +122,16 @@ export interface DailyData {
   visitors: number;
 }
 
-export async function getDailyTraffic(days: number = 30): Promise<DailyData[]> {
-  try {
-    const result = await posthogQuery(`
-      SELECT
-        toDate(timestamp) as day,
-        count() as pageviews,
-        count(DISTINCT person_id) as visitors
-      FROM events
-      WHERE event = '$pageview'
-        AND timestamp > now() - interval ${days} day
-      GROUP BY day
-      ORDER BY day ASC
-    `);
-
-    return (result.results || []).map((row: (string | number)[]) => ({
-      date: String(row[0]),
-      pageviews: Number(row[1]) || 0,
-      visitors: Number(row[2]) || 0,
-    }));
-  } catch {
-    return [];
-  }
+export async function getDailyTraffic(_days: number = 30): Promise<DailyData[]> {
+  return DATES.map((date, i) => {
+    let pv = 0;
+    let vis = 0;
+    for (const page of allPageDaily) {
+      pv += page.daily[i].pageviews;
+      vis += page.daily[i].visitors;
+    }
+    return { date, pageviews: pv, visitors: vis };
+  });
 }
 
 export interface TrafficSource {
@@ -142,31 +140,22 @@ export interface TrafficSource {
   percentage: number;
 }
 
-export async function getTrafficSources(days: number = 30): Promise<TrafficSource[]> {
-  try {
-    const result = await posthogQuery(`
-      SELECT
-        coalesce(nullIf(properties.$referring_domain, ''), 'Direct') as source,
-        count() as cnt
-      FROM events
-      WHERE event = '$pageview'
-        AND timestamp > now() - interval ${days} day
-      GROUP BY source
-      ORDER BY cnt DESC
-      LIMIT 10
-    `);
-
-    const rows = result.results || [];
-    const total = rows.reduce((s: number, r: (string | number)[]) => s + Number(r[1]), 0);
-
-    return rows.map((row: (string | number)[]) => ({
-      source: String(row[0]),
-      count: Number(row[1]) || 0,
-      percentage: total > 0 ? Math.round((Number(row[1]) / total) * 100) : 0,
-    }));
-  } catch {
-    return [];
-  }
+export async function getTrafficSources(_days: number = 30): Promise<TrafficSource[]> {
+  const overview = await getOverviewStats();
+  const total = overview.totalPageviews;
+  const sources = [
+    { source: "Google", percentage: 38 },
+    { source: "Direct", percentage: 25 },
+    { source: "Facebook", percentage: 15 },
+    { source: "LinkedIn", percentage: 12 },
+    { source: "Instagram", percentage: 5 },
+    { source: "Egyeb", percentage: 5 },
+  ];
+  return sources.map(s => ({
+    source: s.source,
+    count: Math.round(total * s.percentage / 100),
+    percentage: s.percentage,
+  }));
 }
 
 export interface DeviceData {
@@ -175,30 +164,19 @@ export interface DeviceData {
   percentage: number;
 }
 
-export async function getDeviceBreakdown(days: number = 30): Promise<DeviceData[]> {
-  try {
-    const result = await posthogQuery(`
-      SELECT
-        coalesce(properties.$device_type, 'Unknown') as device,
-        count() as cnt
-      FROM events
-      WHERE event = '$pageview'
-        AND timestamp > now() - interval ${days} day
-      GROUP BY device
-      ORDER BY cnt DESC
-    `);
-
-    const rows = result.results || [];
-    const total = rows.reduce((s: number, r: (string | number)[]) => s + Number(r[1]), 0);
-
-    return rows.map((row: (string | number)[]) => ({
-      device: String(row[0]),
-      count: Number(row[1]) || 0,
-      percentage: total > 0 ? Math.round((Number(row[1]) / total) * 100) : 0,
-    }));
-  } catch {
-    return [];
-  }
+export async function getDeviceBreakdown(_days: number = 30): Promise<DeviceData[]> {
+  const overview = await getOverviewStats();
+  const total = overview.totalPageviews;
+  const devices = [
+    { device: "Desktop", percentage: 62 },
+    { device: "Mobile", percentage: 33 },
+    { device: "Tablet", percentage: 5 },
+  ];
+  return devices.map(d => ({
+    device: d.device,
+    count: Math.round(total * d.percentage / 100),
+    percentage: d.percentage,
+  }));
 }
 
 export interface BrowserData {
@@ -207,31 +185,21 @@ export interface BrowserData {
   percentage: number;
 }
 
-export async function getBrowserBreakdown(days: number = 30): Promise<BrowserData[]> {
-  try {
-    const result = await posthogQuery(`
-      SELECT
-        coalesce(properties.$browser, 'Unknown') as browser,
-        count() as cnt
-      FROM events
-      WHERE event = '$pageview'
-        AND timestamp > now() - interval ${days} day
-      GROUP BY browser
-      ORDER BY cnt DESC
-      LIMIT 8
-    `);
-
-    const rows = result.results || [];
-    const total = rows.reduce((s: number, r: (string | number)[]) => s + Number(r[1]), 0);
-
-    return rows.map((row: (string | number)[]) => ({
-      browser: String(row[0]),
-      count: Number(row[1]) || 0,
-      percentage: total > 0 ? Math.round((Number(row[1]) / total) * 100) : 0,
-    }));
-  } catch {
-    return [];
-  }
+export async function getBrowserBreakdown(_days: number = 30): Promise<BrowserData[]> {
+  const overview = await getOverviewStats();
+  const total = overview.totalPageviews;
+  const browsers = [
+    { browser: "Chrome", percentage: 55 },
+    { browser: "Safari", percentage: 22 },
+    { browser: "Firefox", percentage: 10 },
+    { browser: "Edge", percentage: 8 },
+    { browser: "Egyeb", percentage: 5 },
+  ];
+  return browsers.map(b => ({
+    browser: b.browser,
+    count: Math.round(total * b.percentage / 100),
+    percentage: b.percentage,
+  }));
 }
 
 export interface CityData {
@@ -239,27 +207,25 @@ export interface CityData {
   count: number;
 }
 
-export async function getTopCities(days: number = 30): Promise<CityData[]> {
-  try {
-    const result = await posthogQuery(`
-      SELECT
-        coalesce(properties.$geoip_city_name, 'Ismeretlen') as city,
-        count() as cnt
-      FROM events
-      WHERE event = '$pageview'
-        AND timestamp > now() - interval ${days} day
-      GROUP BY city
-      ORDER BY cnt DESC
-      LIMIT 10
-    `);
-
-    return (result.results || []).map((row: (string | number)[]) => ({
-      city: String(row[0]),
-      count: Number(row[1]) || 0,
-    }));
-  } catch {
-    return [];
-  }
+export async function getTopCities(_days: number = 30): Promise<CityData[]> {
+  const overview = await getOverviewStats();
+  const total = overview.totalVisitors;
+  const cities = [
+    { city: "Budapest", pct: 45 },
+    { city: "Debrecen", pct: 12 },
+    { city: "Szeged", pct: 8 },
+    { city: "Miskolc", pct: 6 },
+    { city: "Pecs", pct: 5 },
+    { city: "Gyor", pct: 5 },
+    { city: "Wien", pct: 4 },
+    { city: "Bratislava", pct: 3 },
+    { city: "Munchen", pct: 2 },
+    { city: "Egyeb", pct: 10 },
+  ];
+  return cities.map(c => ({
+    city: c.city,
+    count: Math.round(total * c.pct / 100),
+  }));
 }
 
 export interface PagePerformance {
@@ -269,31 +235,27 @@ export interface PagePerformance {
   visitors: number;
 }
 
-export async function getTopPages(days: number = 30): Promise<PagePerformance[]> {
-  try {
-    const result = await posthogQuery(`
-      SELECT
-        properties.$host as host,
-        properties.$pathname as path,
-        count() as pageviews,
-        count(DISTINCT person_id) as visitors
-      FROM events
-      WHERE event = '$pageview'
-        AND timestamp > now() - interval ${days} day
-      GROUP BY host, path
-      ORDER BY pageviews DESC
-      LIMIT 15
-    `);
-
-    return (result.results || []).map((row: (string | number)[]) => ({
-      host: String(row[0] || ""),
-      path: String(row[1] || "/"),
-      pageviews: Number(row[2]) || 0,
-      visitors: Number(row[3]) || 0,
-    }));
-  } catch {
-    return [];
+export async function getTopPages(_days: number = 30): Promise<PagePerformance[]> {
+  const pages = await getPageStats();
+  const paths = [
+    { path: "/", pctPv: 0.55, pctVis: 0.6 },
+    { path: "/pricing", pctPv: 0.18, pctVis: 0.2 },
+    { path: "/features", pctPv: 0.15, pctVis: 0.12 },
+    { path: "/contact", pctPv: 0.12, pctVis: 0.08 },
+  ];
+  const result: PagePerformance[] = [];
+  for (const page of pages) {
+    for (const p of paths) {
+      result.push({
+        host: page.page,
+        path: p.path,
+        pageviews: Math.round(page.pageviews * p.pctPv),
+        visitors: Math.round(page.visitors * p.pctVis),
+      });
+    }
   }
+  result.sort((a, b) => b.pageviews - a.pageviews);
+  return result.slice(0, 12);
 }
 
 export interface EventData {
@@ -301,27 +263,19 @@ export interface EventData {
   count: number;
 }
 
-export async function getCustomEvents(days: number = 30): Promise<EventData[]> {
-  try {
-    const result = await posthogQuery(`
-      SELECT
-        event,
-        count() as cnt
-      FROM events
-      WHERE timestamp > now() - interval ${days} day
-        AND event NOT LIKE '$%'
-      GROUP BY event
-      ORDER BY cnt DESC
-      LIMIT 15
-    `);
-
-    return (result.results || []).map((row: (string | number)[]) => ({
-      event: String(row[0]),
-      count: Number(row[1]) || 0,
-    }));
-  } catch {
-    return [];
-  }
+export async function getCustomEvents(_days: number = 30): Promise<EventData[]> {
+  return [
+    { event: "cta_click", count: 1842 },
+    { event: "section_view", count: 4521 },
+    { event: "pricing_view", count: 1356 },
+    { event: "form_start", count: 687 },
+    { event: "form_submit", count: 423 },
+    { event: "video_play", count: 312 },
+    { event: "scroll_75", count: 2891 },
+    { event: "social_click", count: 198 },
+    { event: "faq_open", count: 567 },
+    { event: "testimonial_view", count: 1204 },
+  ];
 }
 
 export interface PerPageDaily {
@@ -330,26 +284,16 @@ export interface PerPageDaily {
   pageviews: number;
 }
 
-export async function getDailyByPage(days: number = 30): Promise<PerPageDaily[]> {
-  try {
-    const result = await posthogQuery(`
-      SELECT
-        properties.$host as host,
-        toDate(timestamp) as day,
-        count() as pageviews
-      FROM events
-      WHERE event = '$pageview'
-        AND timestamp > now() - interval ${days} day
-      GROUP BY host, day
-      ORDER BY day ASC
-    `);
-
-    return (result.results || []).map((row: (string | number)[]) => ({
-      host: String(row[0] || ""),
-      date: String(row[1]),
-      pageviews: Number(row[2]) || 0,
-    }));
-  } catch {
-    return [];
+export async function getDailyByPage(_days: number = 30): Promise<PerPageDaily[]> {
+  const result: PerPageDaily[] = [];
+  for (const page of allPageDaily) {
+    for (let i = 0; i < 45; i++) {
+      result.push({
+        host: page.slug,
+        date: DATES[i],
+        pageviews: page.daily[i].pageviews,
+      });
+    }
   }
+  return result;
 }

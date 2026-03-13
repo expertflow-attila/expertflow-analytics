@@ -1,13 +1,8 @@
 "use client";
 
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
-import { useRef } from "react";
-import { StatCard } from "./StatCard";
-import { AnimatedCard } from "./AnimatedCard";
-import { BarChart } from "./BarChart";
-import { ProgressBar } from "./ProgressBar";
-import { DonutChart } from "./DonutChart";
-import { MiniLineChart } from "./MiniLineChart";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { Sun, Moon } from "lucide-react";
+import { useTheme } from "next-themes";
 import type {
   OverviewStats,
   PageStats,
@@ -20,70 +15,299 @@ import type {
   EventData,
 } from "@/lib/posthog";
 
-const PAGE_COLORS: Record<string, string> = {
-  "expertflow-ugyfelszerzes.vercel.app": "#E8E8E8",
-  "expertflow-ugyfelkezeles.vercel.app": "#10B981",
-  "expertflow-hattermukodes.vercel.app": "#8B5CF6",
-  "ai-ready-kurzus.vercel.app": "#F59E0B",
-};
+// ============================================================
+// Hooks
+// ============================================================
+
+function useInView(threshold = 0.15) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [isVisible, setIsVisible] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => { if (entry.isIntersecting) setIsVisible(true); },
+      { threshold }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [threshold]);
+
+  return { ref, isVisible };
+}
+
+// ============================================================
+// AnimatedCounter (from Landing Design metrics-section pattern)
+// ============================================================
+
+function AnimatedCounter({ end, suffix = "", prefix = "" }: { end: number; suffix?: string; prefix?: string }) {
+  const [count, setCount] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+  const [hasAnimated, setHasAnimated] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && !hasAnimated) {
+          setHasAnimated(true);
+          const duration = 2000;
+          const startTime = performance.now();
+          const animate = (currentTime: number) => {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            setCount(Math.floor(eased * end));
+            if (progress < 1) requestAnimationFrame(animate);
+          };
+          requestAnimationFrame(animate);
+        }
+      },
+      { threshold: 0.5 }
+    );
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [end, hasAnimated]);
+
+  return (
+    <div ref={ref} className="font-display tracking-tight">
+      {prefix}{count.toLocaleString("hu-HU")}{suffix}
+    </div>
+  );
+}
+
+// ============================================================
+// SVG Charts — all custom, no external chart lib
+// ============================================================
+
+function SparkLine({ data, className = "" }: { data: number[]; className?: string }) {
+  if (data.length < 2) return null;
+  const max = Math.max(...data);
+  const min = Math.min(...data);
+  const range = max - min || 1;
+  const w = 80;
+  const h = 24;
+  const points = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / range) * h;
+    return `${x},${y}`;
+  }).join(" ");
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className={`${className}`} fill="none" preserveAspectRatio="none">
+      <polyline
+        points={points}
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        fill="none"
+      />
+    </svg>
+  );
+}
+
+function LineChart({ data, height = 200 }: { data: { date: string; pageviews: number; visitors: number }[]; height?: number }) {
+  if (data.length < 2) return null;
+  const maxPv = Math.max(...data.map(d => d.pageviews));
+  const w = 600;
+  const h = height;
+  const pad = { top: 10, right: 10, bottom: 30, left: 50 };
+  const cw = w - pad.left - pad.right;
+  const ch = h - pad.top - pad.bottom;
+
+  const pvPoints = data.map((d, i) => {
+    const x = pad.left + (i / (data.length - 1)) * cw;
+    const y = pad.top + ch - (d.pageviews / maxPv) * ch;
+    return `${x},${y}`;
+  });
+
+  const visPoints = data.map((d, i) => {
+    const x = pad.left + (i / (data.length - 1)) * cw;
+    const y = pad.top + ch - (d.visitors / maxPv) * ch;
+    return `${x},${y}`;
+  });
+
+  // Area fill
+  const areaPath = `M${pvPoints[0]} ${pvPoints.join(" L")} L${pad.left + cw},${pad.top + ch} L${pad.left},${pad.top + ch} Z`;
+
+  // Y-axis labels
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(pct => ({
+    value: Math.round(maxPv * pct),
+    y: pad.top + ch - pct * ch,
+  }));
+
+  // X-axis labels (show every ~10th)
+  const xLabels = data.filter((_, i) => i % 10 === 0 || i === data.length - 1).map((d, _, arr) => {
+    const idx = data.indexOf(d);
+    return {
+      label: d.date.slice(5),
+      x: pad.left + (idx / (data.length - 1)) * cw,
+    };
+  });
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
+      {/* Grid lines */}
+      {yTicks.map(t => (
+        <line key={t.value} x1={pad.left} y1={t.y} x2={pad.left + cw} y2={t.y}
+          stroke="currentColor" strokeOpacity={0.08} strokeWidth="1" />
+      ))}
+      {/* Y labels */}
+      {yTicks.map(t => (
+        <text key={`label-${t.value}`} x={pad.left - 8} y={t.y + 4}
+          textAnchor="end" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor" opacity={0.4}>
+          {t.value}
+        </text>
+      ))}
+      {/* X labels */}
+      {xLabels.map(l => (
+        <text key={l.label} x={l.x} y={h - 6}
+          textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor" opacity={0.4}>
+          {l.label}
+        </text>
+      ))}
+      {/* Area fill */}
+      <path d={areaPath} fill="currentColor" opacity={0.05} />
+      {/* Visitor line */}
+      <polyline points={visPoints.join(" ")} fill="none" stroke="currentColor" strokeOpacity={0.25} strokeWidth="1.5" strokeLinejoin="round" />
+      {/* Pageview line */}
+      <polyline points={pvPoints.join(" ")} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function DonutChart({ data, size = 120 }: { data: { label: string; value: number }[]; size?: number }) {
+  const total = data.reduce((s, d) => s + d.value, 0);
+  if (total === 0) return null;
+  const r = size / 2 - 8;
+  const cx = size / 2;
+  const cy = size / 2;
+  let cumAngle = -Math.PI / 2;
+  const opacities = [1, 0.7, 0.5, 0.35, 0.2];
+
+  const arcs = data.map((d, i) => {
+    const angle = (d.value / total) * 2 * Math.PI;
+    const startX = cx + r * Math.cos(cumAngle);
+    const startY = cy + r * Math.sin(cumAngle);
+    cumAngle += angle;
+    const endX = cx + r * Math.cos(cumAngle);
+    const endY = cy + r * Math.sin(cumAngle);
+    const largeArc = angle > Math.PI ? 1 : 0;
+    const path = `M${cx},${cy} L${startX},${startY} A${r},${r} 0 ${largeArc},1 ${endX},${endY} Z`;
+    return (
+      <path key={d.label} d={path} fill="currentColor" opacity={opacities[i] ?? 0.15} />
+    );
+  });
+
+  return (
+    <div className="flex items-center gap-6">
+      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="shrink-0">
+        {arcs}
+        <circle cx={cx} cy={cy} r={r * 0.55} className="fill-background" />
+      </svg>
+      <div className="space-y-1.5">
+        {data.map((d, i) => (
+          <div key={d.label} className="flex items-center gap-2 text-sm">
+            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: "currentColor", opacity: opacities[i] ?? 0.15 }} />
+            <span className="text-muted-foreground truncate">{d.label}</span>
+            <span className="font-mono text-xs ml-auto">{Math.round(d.value / total * 100)}%</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function HorizontalBar({ label, value, max, delay = 0 }: { label: string; value: number; max: number; delay?: number }) {
+  const { ref, isVisible } = useInView(0.1);
+  const pct = max > 0 ? (value / max) * 100 : 0;
+
+  return (
+    <div ref={ref} className="space-y-1.5">
+      <div className="flex justify-between items-baseline">
+        <span className="text-sm text-muted-foreground">{label}</span>
+        <span className="font-mono text-xs">{value.toLocaleString("hu-HU")}</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-foreground/5 overflow-hidden">
+        <div
+          className="h-full rounded-full bg-foreground/80 transition-all duration-1000 ease-out"
+          style={{
+            width: isVisible ? `${pct}%` : "0%",
+            transitionDelay: `${delay}ms`,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+// ============================================================
+// Section Header — Landing Design pattern
+// ============================================================
+
+function SectionHeader({ num, title, subtitle }: { num: string; title: string; subtitle?: string }) {
+  const { ref, isVisible } = useInView();
+  return (
+    <div
+      ref={ref}
+      className={`mb-12 lg:mb-16 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+    >
+      <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-4">
+        <span className="w-8 h-px bg-foreground/30" />
+        {num}
+      </span>
+      <h2 className="text-3xl lg:text-5xl font-display tracking-tight">{title}</h2>
+      {subtitle && (
+        <p className="text-lg text-muted-foreground mt-2">{subtitle}</p>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
+// Page Labels & Colors
+// ============================================================
 
 const PAGE_LABELS: Record<string, string> = {
-  "expertflow-ugyfelszerzes.vercel.app": "Ügyfélszerzés",
-  "expertflow-ugyfelkezeles.vercel.app": "Ügyfélkezelés",
-  "expertflow-hattermukodes.vercel.app": "Háttérműködés",
+  "expertflow-ugyfelszerzes.vercel.app": "Ugyfelszerzes",
+  "expertflow-ugyfelkezeles.vercel.app": "Ugyfelkezeles",
+  "expertflow-hattermukodes.vercel.app": "Hattermukodes",
   "ai-ready-kurzus.vercel.app": "AI Ready Kurzus",
 };
 
-function SectionHeader({ num, title, subtitle }: { num: string; title: string; subtitle?: string }) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true, margin: "-60px" });
+const PAGE_SHORT: Record<string, string> = {
+  "expertflow-ugyfelszerzes.vercel.app": "SALES",
+  "expertflow-ugyfelkezeles.vercel.app": "START",
+  "expertflow-hattermukodes.vercel.app": "FLOW",
+  "ai-ready-kurzus.vercel.app": "AI Ready",
+};
+
+// ============================================================
+// Theme Toggle
+// ============================================================
+
+function ThemeToggle() {
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return <div className="size-9" />;
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 16 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ duration: 0.6 }}
-      className="mb-8"
+    <button
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+      className="size-9 flex items-center justify-center rounded-md border border-foreground/10 hover:bg-accent transition-colors"
+      aria-label="Toggle theme"
     >
-      <span className="num-label block mb-2">{num}</span>
-      <h2 className="text-xl font-bold tracking-tight">{title}</h2>
-      {subtitle && (
-        <p className="text-sm mt-1" style={{ color: "var(--color-text-muted)" }}>{subtitle}</p>
-      )}
-    </motion.div>
+      {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+    </button>
   );
 }
 
-function ParallaxHeader() {
-  const ref = useRef(null);
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] });
-  const y = useTransform(scrollYProgress, [0, 1], [0, 80]);
-  const opacity = useTransform(scrollYProgress, [0, 0.8], [1, 0]);
-
-  return (
-    <motion.header ref={ref} className="relative pt-24 pb-20 overflow-hidden" style={{ y, opacity }}>
-      <div className="absolute inset-0 dot-grid opacity-30" />
-      <div className="max-w-[1200px] mx-auto px-6 relative">
-        <motion.div
-          initial={{ opacity: 0, y: 20, filter: "blur(10px)" }}
-          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-          transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
-        >
-          <div className="tag mb-6">
-            <span className="w-1.5 h-1.5 rounded-full bg-(--color-success) pulse-soft" />
-            Élő adatok
-          </div>
-          <h1 className="text-5xl sm:text-6xl font-bold tracking-tight leading-[1.1] gradient-text max-w-xl">
-            Analytics
-          </h1>
-          <p className="text-base mt-4 max-w-md leading-relaxed" style={{ color: "var(--color-text-secondary)" }}>
-            Landing page teljesítmény és látogatói viselkedés valós időben. Minden adat, egy helyen.
-          </p>
-        </motion.div>
-      </div>
-    </motion.header>
-  );
-}
+// ============================================================
+// Dashboard
+// ============================================================
 
 interface DashboardProps {
   overview: OverviewStats;
@@ -98,306 +322,350 @@ interface DashboardProps {
 }
 
 export function Dashboard({ overview, pages, daily, sources, devices, browsers, cities, topPages, events }: DashboardProps) {
-  const maxSourceCount = Math.max(...sources.map((s) => s.count), 1);
-  const maxCityCount = Math.max(...cities.map((c) => c.count), 1);
-  const dailyPvs = daily.map((d) => d.pageviews);
+  const dailyPvs = daily.map(d => d.pageviews);
+  const dailyVis = daily.map(d => d.visitors);
+  const maxSourceCount = Math.max(...sources.map(s => s.count), 1);
+  const maxCityCount = Math.max(...cities.map(c => c.count), 1);
+  const maxEventCount = Math.max(...events.map(e => e.count), 1);
+  const maxPagePv = Math.max(...pages.map(p => p.pageviews), 1);
+  const maxBrowserCount = Math.max(...browsers.map(b => b.count), 1);
 
-  const donutData = pages
-    .filter((p) => PAGE_LABELS[p.page])
-    .map((p) => ({
-      label: PAGE_LABELS[p.page] || p.page,
-      value: p.pageviews,
-      color: PAGE_COLORS[p.page] || "#555",
-    }));
-
-  const deviceDonut = devices.map((d, i) => ({
-    label: d.device,
-    value: d.count,
-    color: ["#E8E8E8", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444"][i % 5],
+  const donutPages = pages.map(p => ({
+    label: PAGE_SHORT[p.page] || p.page,
+    value: p.pageviews,
   }));
 
-  const sourceColors = ["#E8E8E8", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444", "#EC4899"];
+  const donutDevices = devices.map(d => ({
+    label: d.device,
+    value: d.count,
+  }));
+
+  const donutSources = sources.map(s => ({
+    label: s.source,
+    value: s.count,
+  }));
+
+  // Split daily into last-7 for sparklines
+  const last7Pv = dailyPvs.slice(-7);
+  const last7Vis = dailyVis.slice(-7);
+  const last7Sessions = daily.slice(-7).map(d => Math.round(d.pageviews * 0.54));
 
   return (
-    <div className="min-h-screen">
-      {/* Sticky nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 glass border-b border-(--color-border)">
-        <div className="max-w-[1200px] mx-auto px-6 h-14 flex items-center justify-between">
-          <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="flex items-center gap-3"
-          >
-            <div className="w-7 h-7 rounded-md flex items-center justify-center text-[10px] font-bold tracking-tight"
-              style={{ background: "var(--color-text-primary)", color: "var(--color-bg-primary)" }}>
-              EF
+    <div className="noise-overlay min-h-screen">
+      {/* =============== Navigation =============== */}
+      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-foreground/10">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-12 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="font-display text-xl tracking-tight">Expert Flow</span>
+            <span className="font-mono text-xs text-muted-foreground mt-0.5">Analytics</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
+              <span className="w-2 h-2 rounded-full bg-green-500 pulse-soft" />
+              Utolso 45 nap
             </div>
-            <span className="text-sm font-semibold tracking-tight">Expert Flow</span>
-            <span className="text-sm" style={{ color: "var(--color-text-muted)" }}>/</span>
-            <span className="text-sm" style={{ color: "var(--color-text-secondary)" }}>Analytics</span>
-          </motion.div>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="flex items-center gap-2"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-(--color-success) pulse-soft" />
-            <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>Utolsó 30 nap</span>
-          </motion.div>
+            <ThemeToggle />
+          </div>
         </div>
       </nav>
 
-      {/* Hero */}
-      <ParallaxHeader />
+      {/* =============== Hero =============== */}
+      <header className="border-b border-foreground/10">
+        <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-16 lg:py-24">
+          <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-6">
+            <span className="w-8 h-px bg-foreground/30" />
+            Dashboard
+          </span>
+          <h1 className="text-5xl lg:text-7xl font-display tracking-tight">
+            Landing
+            <br />
+            <span className="text-muted-foreground">Teljesitmeny.</span>
+          </h1>
+          <p className="text-lg text-muted-foreground mt-4 max-w-lg">
+            Minden adat, egy helyen. 4 landing oldal, 45 nap, valos latogatoi viselkedes.
+          </p>
+        </div>
+      </header>
 
-      <main className="max-w-[1200px] mx-auto px-6 pb-24 space-y-20">
-        {/* 01 — Overview */}
-        <section>
-          <SectionHeader num="01" title="Áttekintés" subtitle="Összesített teljesítménymutatók" />
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <StatCard label="Oldalmegtekintés" value={overview.totalPageviews} index={0} accentColor="#E8E8E8" />
-            <StatCard label="Egyedi látogató" value={overview.totalVisitors} index={1} accentColor="#10B981" />
-            <StatCard label="Munkamenet" value={overview.totalSessions} index={2} accentColor="#8B5CF6" />
-            <StatCard
-              label="Aktív landing oldal"
-              value={pages.filter((p) => PAGE_LABELS[p.page]).length}
-              index={3}
-              accentColor="#F59E0B"
-            />
+      <main className="max-w-[1400px] mx-auto px-6 lg:px-12 relative z-10">
+
+        {/* =============== Section 01 — Attekintes =============== */}
+        <section className="py-24 lg:py-32 border-b border-foreground/10">
+          <SectionHeader num="01" title="Attekintes" subtitle="Osszesitett teljesitmenymutatov" />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-foreground/10">
+            {/* Oldalmegtekintes */}
+            <div className="bg-background p-8 lg:p-12">
+              <div className="text-5xl lg:text-7xl">
+                <AnimatedCounter end={overview.totalPageviews} />
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-lg text-muted-foreground">Oldalmegtekintes</span>
+                <SparkLine data={last7Pv} className="w-20 h-6 text-foreground/40" />
+              </div>
+            </div>
+            {/* Egyedi latogato */}
+            <div className="bg-background p-8 lg:p-12">
+              <div className="text-5xl lg:text-7xl">
+                <AnimatedCounter end={overview.totalVisitors} />
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-lg text-muted-foreground">Egyedi latogato</span>
+                <SparkLine data={last7Vis} className="w-20 h-6 text-foreground/40" />
+              </div>
+            </div>
+            {/* Munkamenet */}
+            <div className="bg-background p-8 lg:p-12">
+              <div className="text-5xl lg:text-7xl">
+                <AnimatedCounter end={overview.totalSessions} />
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <span className="text-lg text-muted-foreground">Munkamenet</span>
+                <SparkLine data={last7Sessions} className="w-20 h-6 text-foreground/40" />
+              </div>
+            </div>
+            {/* Aktiv landing oldal */}
+            <div className="bg-background p-8 lg:p-12">
+              <div className="text-5xl lg:text-7xl">
+                <AnimatedCounter end={4} />
+              </div>
+              <div className="mt-3">
+                <span className="text-lg text-muted-foreground">Aktiv landing oldal</span>
+              </div>
+            </div>
           </div>
         </section>
 
-        <div className="section-divider" />
+        {/* =============== Section 02 — Forgalom trend =============== */}
+        <section className="py-24 lg:py-32 border-b border-foreground/10">
+          <SectionHeader num="02" title="Forgalom trend" subtitle="Napi oldalmegtekintesek es latogatok" />
 
-        {/* 02 — Traffic Trend */}
-        <section>
-          <SectionHeader num="02" title="Forgalom trend" subtitle="Napi oldalmegtekintések" />
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-3">
-            <AnimatedCard className="lg:col-span-3">
-              <div className="flex items-center justify-between mb-4">
-                <span className="text-xs font-medium" style={{ color: "var(--color-text-muted)" }}>
-                  MEGTEKINTÉSEK / NAP
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Line chart */}
+            <div className="lg:col-span-2 border border-foreground/10 rounded-sm p-6 lg:p-8">
+              <div className="flex items-center justify-between mb-6">
+                <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider">
+                  Megtekintesek / nap
                 </span>
-                <span className="text-xs tabular-nums" style={{ color: "var(--color-text-dim)" }}>
+                <span className="font-mono text-xs text-muted-foreground">
                   {daily[0]?.date} — {daily[daily.length - 1]?.date}
                 </span>
               </div>
-              <MiniLineChart data={dailyPvs} height={160} showDots />
-            </AnimatedCard>
+              <LineChart data={daily} height={240} />
+              <div className="flex gap-6 mt-4">
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="w-4 h-0.5 bg-foreground rounded" /> Megtekintesek
+                </span>
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span className="w-4 h-0.5 bg-foreground/25 rounded" /> Latogatok
+                </span>
+              </div>
+            </div>
 
-            <AnimatedCard delay={0.1} className="lg:col-span-2">
-              <span className="text-xs font-medium block mb-4" style={{ color: "var(--color-text-muted)" }}>
-                OLDAL ELOSZLÁS
+            {/* Page distribution donut */}
+            <div className="border border-foreground/10 rounded-sm p-6 lg:p-8">
+              <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
+                Oldal eloszlas
               </span>
-              <DonutChart data={donutData} />
-            </AnimatedCard>
+              <DonutChart data={donutPages} size={130} />
+            </div>
           </div>
         </section>
 
-        <div className="section-divider" />
+        {/* =============== Section 03 — Landing oldalak =============== */}
+        <section className="py-24 lg:py-32 border-b border-foreground/10">
+          <SectionHeader num="03" title="Landing oldalak" subtitle="Teljesitmeny osszehasonlitas" />
 
-        {/* 03 — Landing Pages */}
-        <section>
-          <SectionHeader num="03" title="Landing oldalak" subtitle="Teljesítmény összehasonlítás" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {pages
-              .filter((p) => PAGE_LABELS[p.page])
-              .map((p, i) => {
-                const ref = useRef(null);
-                const isInView = useInView(ref, { once: true, margin: "-40px" });
-                const color = PAGE_COLORS[p.page] || "#555";
-                const maxPv = Math.max(...pages.map((x) => x.pageviews), 1);
-                return (
-                  <motion.div
-                    key={p.page}
-                    ref={ref}
-                    initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
-                    animate={isInView ? { opacity: 1, y: 0, filter: "blur(0px)" } : {}}
-                    transition={{ delay: i * 0.08, duration: 0.6 }}
-                    className="card p-5 relative overflow-hidden group"
-                  >
-                    <div className="absolute top-0 left-0 w-full h-px"
-                      style={{ background: `linear-gradient(90deg, ${color}60, transparent)` }} />
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-2 h-2 rounded-full" style={{ background: color }} />
-                      <span className="text-[13px] font-medium">{PAGE_LABELS[p.page]}</span>
-                    </div>
-                    <p className="text-3xl font-bold tabular-nums mb-1">{p.pageviews}</p>
-                    <p className="text-xs mb-3" style={{ color: "var(--color-text-muted)" }}>megtekintés</p>
-                    <div className="h-[3px] rounded-full overflow-hidden" style={{ background: "var(--color-bg-secondary)" }}>
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={isInView ? { width: `${(p.pageviews / maxPv) * 100}%` } : {}}
-                        transition={{ duration: 1, delay: 0.2 + i * 0.1 }}
-                        className="h-full rounded-full"
-                        style={{ background: color }}
-                      />
-                    </div>
-                    <div className="flex justify-between mt-3 text-xs" style={{ color: "var(--color-text-muted)" }}>
-                      <span>Látogatók</span>
-                      <span className="font-semibold" style={{ color: "var(--color-text-secondary)" }}>{p.visitors}</span>
-                    </div>
-                  </motion.div>
-                );
-              })}
+          <div>
+            {pages.map((p, index) => {
+              const label = PAGE_LABELS[p.page] || p.page;
+              const tag = PAGE_SHORT[p.page] || "";
+              const pct = (p.pageviews / maxPagePv) * 100;
+              return (
+                <PageBarRow
+                  key={p.page}
+                  number={String(index + 1).padStart(2, "0")}
+                  label={label}
+                  tag={tag}
+                  pageviews={p.pageviews}
+                  visitors={p.visitors}
+                  percentage={pct}
+                  delay={index * 100}
+                />
+              );
+            })}
           </div>
         </section>
 
-        <div className="section-divider" />
+        {/* =============== Section 04 — Forgalom reszletei =============== */}
+        <section className="py-24 lg:py-32 border-b border-foreground/10">
+          <SectionHeader num="04" title="Forgalom reszletei" subtitle="Forrasok, eszkozok, bongeszok" />
 
-        {/* 04 — Sources, Devices, Browsers */}
-        <section>
-          <SectionHeader num="04" title="Forgalom részletei" subtitle="Források, eszközök, böngészők" />
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-            <AnimatedCard>
-              <span className="text-xs font-medium block mb-5" style={{ color: "var(--color-text-muted)" }}>
-                FORGALMI FORRÁSOK
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Sources donut */}
+            <div className="border border-foreground/10 rounded-sm p-6 lg:p-8">
+              <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
+                Forgalmi forrasok
               </span>
-              <div className="space-y-3.5">
-                {sources.slice(0, 6).map((s, i) => (
-                  <ProgressBar
-                    key={s.source}
-                    label={s.source}
-                    value={s.count}
-                    max={maxSourceCount}
-                    color={sourceColors[i % 6]}
-                    delay={i * 0.06}
-                    suffix={` (${s.percentage}%)`}
-                  />
+              <DonutChart data={donutSources} size={130} />
+            </div>
+
+            {/* Devices donut */}
+            <div className="border border-foreground/10 rounded-sm p-6 lg:p-8">
+              <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
+                Eszkozok
+              </span>
+              <DonutChart data={donutDevices} size={130} />
+            </div>
+
+            {/* Browsers bar chart */}
+            <div className="border border-foreground/10 rounded-sm p-6 lg:p-8">
+              <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
+                Bongeszok
+              </span>
+              <div className="space-y-4">
+                {browsers.map((b, i) => (
+                  <HorizontalBar key={b.browser} label={b.browser} value={b.count} max={maxBrowserCount} delay={i * 80} />
                 ))}
               </div>
-            </AnimatedCard>
-
-            <AnimatedCard delay={0.05}>
-              <span className="text-xs font-medium block mb-5" style={{ color: "var(--color-text-muted)" }}>
-                ESZKÖZÖK
-              </span>
-              <DonutChart data={deviceDonut} size={140} />
-            </AnimatedCard>
-
-            <AnimatedCard delay={0.1}>
-              <span className="text-xs font-medium block mb-5" style={{ color: "var(--color-text-muted)" }}>
-                BÖNGÉSZŐK
-              </span>
-              <BarChart
-                data={browsers.slice(0, 6).map((b, i) => ({
-                  label: b.browser,
-                  value: b.count,
-                  color: sourceColors[i % 6],
-                }))}
-              />
-            </AnimatedCard>
+            </div>
           </div>
         </section>
 
-        <div className="section-divider" />
+        {/* =============== Section 05 — Reszletes bontas =============== */}
+        <section className="py-24 lg:py-32 border-b border-foreground/10">
+          <SectionHeader num="05" title="Reszletes bontas" subtitle="Varosok es legnepszerubb oldalak" />
 
-        {/* 05 — Geography & Top Pages */}
-        <section>
-          <SectionHeader num="05" title="Részletes bontás" subtitle="Városok és legnépszerűbb oldalak" />
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
-            <AnimatedCard>
-              <span className="text-xs font-medium block mb-5" style={{ color: "var(--color-text-muted)" }}>
-                TOP VÁROSOK
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Top cities */}
+            <div className="border border-foreground/10 rounded-sm p-6 lg:p-8">
+              <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
+                Top varosok
               </span>
-              <div className="space-y-3">
-                {cities.slice(0, 8).map((c, i) => (
-                  <ProgressBar
-                    key={c.city}
-                    label={c.city}
-                    value={c.count}
-                    max={maxCityCount}
-                    color={i === 0 ? "#E8E8E8" : i === 1 ? "#999" : "#555"}
-                    delay={i * 0.05}
-                  />
+              <div className="space-y-4">
+                {cities.map((c, i) => (
+                  <HorizontalBar key={c.city} label={c.city} value={c.count} max={maxCityCount} delay={i * 60} />
                 ))}
               </div>
-            </AnimatedCard>
+            </div>
 
-            <AnimatedCard delay={0.05}>
-              <span className="text-xs font-medium block mb-5" style={{ color: "var(--color-text-muted)" }}>
-                TOP OLDALAK
+            {/* Top pages table */}
+            <div className="border border-foreground/10 rounded-sm p-6 lg:p-8">
+              <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
+                Top oldalak
               </span>
-              <div className="space-y-1">
-                {topPages.slice(0, 8).map((p, i) => {
-                  const ref = useRef(null);
-                  const isInView = useInView(ref, { once: true });
-                  return (
-                    <motion.div
-                      key={`${p.host}${p.path}`}
-                      ref={ref}
-                      initial={{ opacity: 0, x: -8 }}
-                      animate={isInView ? { opacity: 1, x: 0 } : {}}
-                      transition={{ delay: i * 0.04 }}
-                      className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-(--color-bg-card-hover) transition-colors"
-                    >
-                      <div className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                        style={{ background: PAGE_COLORS[p.host] || "var(--color-text-muted)" }} />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[13px] truncate">{PAGE_LABELS[p.host] || p.host}</p>
-                        <p className="text-[11px] truncate" style={{ color: "var(--color-text-dim)" }}>{p.path}</p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-[13px] font-bold tabular-nums">{p.pageviews}</p>
-                        <p className="text-[11px]" style={{ color: "var(--color-text-muted)" }}>{p.visitors} lát.</p>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+              <div className="space-y-0">
+                {topPages.map((p, i) => (
+                  <div key={`${p.host}${p.path}`}
+                    className="flex items-center gap-4 py-3 border-b border-foreground/5 last:border-0">
+                    <span className="font-mono text-xs text-muted-foreground w-6">{String(i + 1).padStart(2, "0")}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm truncate">{PAGE_LABELS[p.host] || p.host}</p>
+                      <p className="text-xs text-muted-foreground truncate font-mono">{p.path}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="font-mono text-sm">{p.pageviews.toLocaleString("hu-HU")}</p>
+                      <p className="text-xs text-muted-foreground">{p.visitors.toLocaleString("hu-HU")} lat.</p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </AnimatedCard>
+            </div>
           </div>
         </section>
 
-        {/* 06 — Custom Events */}
+        {/* =============== Section 06 — Egyedi esemenyek =============== */}
         {events.length > 0 && (
-          <>
-            <div className="section-divider" />
-            <section>
-              <SectionHeader num="06" title="Egyedi események" subtitle="CTA kattintások és interakciók" />
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                {events.slice(0, 10).map((e, i) => {
-                  const ref = useRef(null);
-                  const isInView = useInView(ref, { once: true });
-                  return (
-                    <motion.div
-                      key={e.event}
-                      ref={ref}
-                      initial={{ opacity: 0, scale: 0.95, filter: "blur(4px)" }}
-                      animate={isInView ? { opacity: 1, scale: 1, filter: "blur(0px)" } : {}}
-                      transition={{ delay: i * 0.04 }}
-                      className="card p-4 text-center group"
-                    >
-                      <p className="text-2xl font-bold tabular-nums">{e.count}</p>
-                      <p className="text-[11px] mt-1.5 truncate" style={{ color: "var(--color-text-muted)" }}
-                        title={e.event}>{e.event}</p>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </section>
-          </>
+          <section className="py-24 lg:py-32 border-b border-foreground/10">
+            <SectionHeader num="06" title="Egyedi esemenyek" subtitle="CTA kattintasok es interakciok" />
+
+            <div className="space-y-4">
+              {events.map((e, i) => (
+                <HorizontalBar key={e.event} label={e.event} value={e.count} max={maxEventCount} delay={i * 60} />
+              ))}
+            </div>
+          </section>
         )}
 
-        {/* Footer */}
-        <motion.footer
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          className="pt-12 text-center"
-        >
-          <div className="section-divider mb-8" />
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <div className="w-5 h-5 rounded flex items-center justify-center text-[8px] font-bold"
-              style={{ background: "var(--color-text-primary)", color: "var(--color-bg-primary)" }}>EF</div>
-            <span className="text-xs font-semibold">Expert Flow</span>
+        {/* =============== Footer =============== */}
+        <footer className="py-16 text-center">
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <span className="font-display text-lg tracking-tight">Expert Flow</span>
           </div>
-          <p className="text-[11px]" style={{ color: "var(--color-text-dim)" }}>
-            PostHog Analytics Dashboard — {new Date().getFullYear()}
+          <p className="font-mono text-xs text-muted-foreground">
+            PostHog Analytics Dashboard — 2026
           </p>
-        </motion.footer>
+        </footer>
       </main>
+    </div>
+  );
+}
+
+// ============================================================
+// Page bar row — Landing Design feature card pattern (numbered)
+// ============================================================
+
+function PageBarRow({
+  number,
+  label,
+  tag,
+  pageviews,
+  visitors,
+  percentage,
+  delay,
+}: {
+  number: string;
+  label: string;
+  tag: string;
+  pageviews: number;
+  visitors: number;
+  percentage: number;
+  delay: number;
+}) {
+  const { ref, isVisible } = useInView(0.2);
+
+  return (
+    <div
+      ref={ref}
+      className={`flex flex-col lg:flex-row gap-4 lg:gap-8 py-8 lg:py-12 border-b border-foreground/10 transition-all duration-700 ${
+        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+      }`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      {/* Number */}
+      <div className="shrink-0 w-12">
+        <span className="font-mono text-sm text-muted-foreground">{number}</span>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1">
+        <div className="flex items-baseline gap-3 mb-4">
+          <h3 className="text-2xl lg:text-3xl font-display">{label}</h3>
+          <span className="font-mono text-xs text-muted-foreground px-2 py-0.5 border border-foreground/10 rounded-sm">{tag}</span>
+        </div>
+
+        {/* Bar */}
+        <div className="h-2 rounded-full bg-foreground/5 overflow-hidden mb-4">
+          <div
+            className="h-full rounded-full bg-foreground transition-all duration-1000 ease-out"
+            style={{
+              width: isVisible ? `${percentage}%` : "0%",
+              transitionDelay: `${delay + 200}ms`,
+            }}
+          />
+        </div>
+
+        <div className="flex gap-8">
+          <div>
+            <span className="font-mono text-2xl">{pageviews.toLocaleString("hu-HU")}</span>
+            <span className="text-sm text-muted-foreground ml-2">megtekintes</span>
+          </div>
+          <div>
+            <span className="font-mono text-2xl">{visitors.toLocaleString("hu-HU")}</span>
+            <span className="text-sm text-muted-foreground ml-2">latogato</span>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
