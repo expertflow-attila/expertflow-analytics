@@ -1,47 +1,49 @@
 "use client";
 
-import { motion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
+import { useRef } from "react";
 
 interface BarChartProps {
   data: { label: string; value: number; color?: string }[];
-  maxHeight?: number;
-  delay?: number;
+  height?: number;
 }
 
-export function BarChart({ data, maxHeight = 160, delay = 0 }: BarChartProps) {
+export function BarChart({ data, height = 140 }: BarChartProps) {
+  const ref = useRef(null);
+  const isInView = useInView(ref, { once: true, margin: "-40px" });
   const max = Math.max(...data.map((d) => d.value), 1);
 
   return (
-    <div className="flex items-end gap-2 justify-between" style={{ height: maxHeight + 32 }}>
+    <div ref={ref} className="flex items-end gap-[3px] justify-between" style={{ height: height + 28 }}>
       {data.map((item, i) => {
-        const height = (item.value / max) * maxHeight;
+        const h = (item.value / max) * height;
         return (
-          <div key={item.label} className="flex flex-col items-center gap-1 flex-1 min-w-0">
+          <div key={item.label} className="flex flex-col items-center gap-1.5 flex-1 min-w-0">
             <motion.span
               initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: delay + i * 0.05 + 0.4 }}
-              className="text-xs tabular-nums"
+              animate={isInView ? { opacity: 1 } : {}}
+              transition={{ delay: i * 0.04 + 0.5 }}
+              className="text-[10px] tabular-nums font-medium"
               style={{ color: "var(--color-text-muted)" }}
             >
               {item.value}
             </motion.span>
             <motion.div
               initial={{ height: 0 }}
-              animate={{ height }}
+              animate={isInView ? { height: h } : {}}
               transition={{
-                duration: 0.6,
-                delay: delay + i * 0.05,
+                duration: 0.8,
+                delay: i * 0.04,
                 ease: [0.25, 0.46, 0.45, 0.94],
               }}
-              className="w-full rounded-t-md min-h-[2px]"
-              style={{
-                background: `linear-gradient(180deg, ${item.color || "var(--color-accent)"}, ${item.color || "var(--color-accent)"}66)`,
-              }}
-            />
+              className="w-full rounded-sm min-h-[1px] relative overflow-hidden"
+              style={{ background: item.color || "var(--color-text-muted)" }}
+            >
+              <div className="absolute inset-0 shimmer" />
+            </motion.div>
             <span
-              className="text-[10px] truncate w-full text-center"
-              style={{ color: "var(--color-text-muted)" }}
+              className="text-[9px] truncate w-full text-center font-medium"
+              style={{ color: "var(--color-text-dim)" }}
               title={item.label}
             >
               {item.label}
