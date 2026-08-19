@@ -1,6 +1,8 @@
 // =====================================================
-// Expert Flow Analytics — Deterministic Demo Data
-// Realistic 45-day traffic across 4 landing pages
+// Business Native — Analitikai rutin (minta adatok)
+// Illusztráció a "hetente egyszer átnézem, honnan érkeznek a
+// látogatók és hol akadnak el" rendszerhez — determinisztikus,
+// KITALÁLT 45 napos forgalom 4 oldalrészhez, NEM élő mérés.
 // =====================================================
 
 export interface PageData {
@@ -10,10 +12,10 @@ export interface PageData {
 }
 
 export const PAGES: PageData[] = [
-  { slug: "expertflow-ugyfelszerzes", label: "Ugyfelszerzes (SALES)", url: "https://expertflow-ugyfelszerzes.vercel.app" },
-  { slug: "expertflow-ugyfelkezeles", label: "Ugyfelkezeles (START)", url: "https://expertflow-ugyfelkezeles.vercel.app" },
-  { slug: "expertflow-hattermukodes", label: "Hattermukodes (FLOW)", url: "https://expertflow-hattermukodes.vercel.app" },
-  { slug: "ai-ready-kurzus", label: "AI Ready Kurzus", url: "https://ai-ready-kurzus.vercel.app" },
+  { slug: "bn-fooldal", label: "Főoldal", url: "https://businessnative.hu" },
+  { slug: "bn-tudastar", label: "Tudástár", url: "https://businessnative.hu/tudastar" },
+  { slug: "bn-diagnozis", label: "AI-diagnózis", url: "https://businessnative.hu/ai-diagnozis" },
+  { slug: "bn-arak", label: "Árak", url: "https://businessnative.hu/arak" },
 ];
 
 // Seeded pseudo-random number generator for deterministic data
@@ -49,10 +51,10 @@ function generateDailyForPage(baseDaily: number, growthFactor: number): { pagevi
 
 // Pre-generate all page data
 const pageConfigs = [
-  { slug: "expertflow-ugyfelszerzes.vercel.app", label: "Ugyfelszerzes (SALES)", baseDaily: 55, growth: 0.35 },
-  { slug: "expertflow-ugyfelkezeles.vercel.app", label: "Ugyfelkezeles (START)", baseDaily: 42, growth: 0.25 },
-  { slug: "expertflow-hattermukodes.vercel.app", label: "Hattermukodes (FLOW)", baseDaily: 35, growth: 0.20 },
-  { slug: "ai-ready-kurzus.vercel.app", label: "AI Ready Kurzus", baseDaily: 48, growth: 0.30 },
+  { slug: "businessnative.hu", label: "Főoldal", baseDaily: 55, growth: 0.35 },
+  { slug: "businessnative.hu/tudastar", label: "Tudástár", baseDaily: 42, growth: 0.25 },
+  { slug: "businessnative.hu/ai-diagnozis", label: "AI-diagnózis", baseDaily: 35, growth: 0.20 },
+  { slug: "businessnative.hu/arak", label: "Árak", baseDaily: 48, growth: 0.30 },
 ];
 
 const allPageDaily = pageConfigs.map(pc => ({
@@ -283,10 +285,10 @@ export async function getTrafficSourcesByPage(_days: number = 30): Promise<Recor
   const result: Record<string, TrafficSource[]> = {};
 
   const sourceVariations: Record<string, number[]> = {
-    "expertflow-ugyfelszerzes.vercel.app": [42, 22, 14, 12, 5, 5],
-    "expertflow-ugyfelkezeles.vercel.app": [35, 28, 16, 11, 5, 5],
-    "expertflow-hattermukodes.vercel.app": [32, 30, 12, 14, 6, 6],
-    "ai-ready-kurzus.vercel.app": [40, 20, 18, 10, 7, 5],
+    "businessnative.hu": [42, 22, 14, 12, 5, 5],
+    "businessnative.hu/tudastar": [35, 28, 16, 11, 5, 5],
+    "businessnative.hu/ai-diagnozis": [32, 30, 12, 14, 6, 6],
+    "businessnative.hu/arak": [40, 20, 18, 10, 7, 5],
   };
 
   for (const page of pages) {
@@ -307,10 +309,10 @@ export async function getDevicesByPage(_days: number = 30): Promise<Record<strin
   const result: Record<string, DeviceData[]> = {};
 
   const deviceVariations: Record<string, number[]> = {
-    "expertflow-ugyfelszerzes.vercel.app": [58, 37, 5],
-    "expertflow-ugyfelkezeles.vercel.app": [65, 30, 5],
-    "expertflow-hattermukodes.vercel.app": [70, 25, 5],
-    "ai-ready-kurzus.vercel.app": [55, 38, 7],
+    "businessnative.hu": [58, 37, 5],
+    "businessnative.hu/tudastar": [65, 30, 5],
+    "businessnative.hu/ai-diagnozis": [70, 25, 5],
+    "businessnative.hu/arak": [55, 38, 7],
   };
 
   for (const page of pages) {

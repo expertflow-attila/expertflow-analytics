@@ -272,33 +272,76 @@ function SectionHeader({ num, title, subtitle }: { num: string; title: string; s
 // ============================================================
 
 const PAGE_LABELS: Record<string, string> = {
-  "expertflow-ugyfelszerzes.vercel.app": "Ügyfélszerzés",
-  "expertflow-ugyfelkezeles.vercel.app": "Ügyfélkezelés",
-  "expertflow-hattermukodes.vercel.app": "Háttérműködés",
-  "ai-ready-kurzus.vercel.app": "AI Ready Kurzus",
+  "businessnative.hu": "Főoldal",
+  "businessnative.hu/tudastar": "Tudástár",
+  "businessnative.hu/ai-diagnozis": "AI-diagnózis",
+  "businessnative.hu/arak": "Árak",
 };
 
 const PAGE_SHORT: Record<string, string> = {
-  "expertflow-ugyfelszerzes.vercel.app": "SALES",
-  "expertflow-ugyfelkezeles.vercel.app": "START",
-  "expertflow-hattermukodes.vercel.app": "FLOW",
-  "ai-ready-kurzus.vercel.app": "AI Ready",
+  "businessnative.hu": "FŐOLDAL",
+  "businessnative.hu/tudastar": "TUDÁSTÁR",
+  "businessnative.hu/ai-diagnozis": "DIAGNÓZIS",
+  "businessnative.hu/arak": "ÁRAK",
 };
 
 const PAGE_HOSTS = [
-  "expertflow-ugyfelszerzes.vercel.app",
-  "expertflow-ugyfelkezeles.vercel.app",
-  "expertflow-hattermukodes.vercel.app",
-  "ai-ready-kurzus.vercel.app",
+  "businessnative.hu",
+  "businessnative.hu/tudastar",
+  "businessnative.hu/ai-diagnozis",
+  "businessnative.hu/arak",
 ];
 
 const PAGE_FILTER_LABELS: Record<string, string> = {
   all: "Összes",
-  "expertflow-ugyfelszerzes.vercel.app": "SALES",
-  "expertflow-ugyfelkezeles.vercel.app": "START",
-  "expertflow-hattermukodes.vercel.app": "FLOW",
-  "ai-ready-kurzus.vercel.app": "AI Ready",
+  "businessnative.hu": "FŐOLDAL",
+  "businessnative.hu/tudastar": "TUDÁSTÁR",
+  "businessnative.hu/ai-diagnozis": "DIAGNÓZIS",
+  "businessnative.hu/arak": "ÁRAK",
 };
+
+// A ténylegesen tervezett mérőeszközök — kitalált, illusztratív számokkal,
+// amíg a valódi API-hozzáférés nincs rendezve (ld. memory
+// project_bn_analitikai_rutin_dashboard_20260817). A PostHog és a YouTube
+// szándékosan NINCS itt (Attila, 2026-08-17): a PostHog mérése még nem
+// indult el, a YouTube-ot pedig egyelőre nem akarja ebben a nézetben — csak
+// a ténylegesen tervezett Google Analytics + Plausible pár marad.
+// MINTA-jelölés minden kártyán, hogy ne lehessen élő mérésnek nézni.
+const CHANNELS: { name: string; stats: { value: string; label: string }[]; desc: string }[] = [
+  {
+    name: "Google Analytics",
+    stats: [
+      { value: "1 890", label: "felhasználó / hónap" },
+      { value: "42%", label: "visszafordulási arány" },
+    ],
+    desc: "Honnan jönnek a látogatók, és melyik oldalon akadnak el.",
+  },
+  {
+    name: "Plausible",
+    stats: [
+      { value: "2 240", label: "egyedi látogató / hónap" },
+      { value: "1,8", label: "oldal / látogatás" },
+    ],
+    desc: "Gyors, süti nélküli alapszámok — második forrásként a GA mellett.",
+  },
+];
+
+// A tervezett teljes útvonal (Attila, 2026-08-17): forgalmat küld a kvízre,
+// onnan a most épülő 7-részes, videós email-kurzusra iratkoznak fel, a
+// sorozat végén konzultációt foglalnak. Az email-kurzus pár napon belül
+// élesedik — ez a szekció egy előnézet arról, hogyan látszana a
+// lemorzsolódás, KITALÁLT, csökkenő számokkal, nem élő konverziós adat.
+const FUNNEL_STEPS: { label: string; value: number; note?: string }[] = [
+  { label: "Weboldal-látogatás", value: 2400 },
+  { label: "AI-diagnózis kvíz kitöltve", value: 640 },
+  {
+    label: "Feliratkozás az email-kurzusra",
+    value: 210,
+    note: "7 rész, mindegyikben videós tananyag — hamarosan élesedik",
+  },
+  { label: "Eljut az utolsó (7.) levélig", value: 96 },
+  { label: "Konzultáció lefoglalva", value: 34 },
+];
 
 // ============================================================
 // Theme Toggle
@@ -424,12 +467,12 @@ export function Dashboard({
       <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-foreground/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="font-display text-xl tracking-tight">Expert Flow</span>
-            <span className="font-mono text-xs text-muted-foreground mt-0.5">Analytics</span>
+            <span className="font-display text-xl tracking-tight">business native</span>
+            <span className="font-mono text-xs text-muted-foreground mt-0.5">Analitikai rutin</span>
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-              <span className="w-2 h-2 rounded-full bg-green-500 pulse-soft" />
+              <span className="w-2 h-2 rounded-full bg-accent pulse-soft" />
               Utolsó 45 nap
             </div>
             <ThemeToggle />
@@ -442,24 +485,82 @@ export function Dashboard({
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-16 lg:py-24">
           <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-6">
             <span className="w-8 h-px bg-foreground/30" />
-            Dashboard
+            Dashboard · minta adatok
           </span>
           <h1 className="text-5xl lg:text-7xl font-display tracking-tight">
-            Landing
+            Analitikai
             <br />
-            <span className="text-muted-foreground">Teljesítmény.</span>
+            <span className="text-muted-foreground">rutin.</span>
           </h1>
           <p className="text-lg text-muted-foreground mt-4 max-w-lg">
-            Minden adat, egy helyen. 4 landing oldal, 45 nap, valós látogatói viselkedés.
+            Így nézne ki, ha a businessnative.hu forgalmát egy helyen látnám —
+            ez a nézet illusztráció, kitalált adatokkal, nem élő mérés.
           </p>
         </div>
       </header>
 
       <main className="max-w-[1400px] mx-auto px-6 lg:px-12 relative z-10">
 
-        {/* =============== Section 00 — Kampány teljesítmény =============== */}
+        {/* =============== Section 00 — Csatornák =============== */}
         <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="00" title="Kampány teljesítmény" subtitle="Egyedi landing oldalak összehasonlítása" />
+          <SectionHeader num="00" title="Csatornák" subtitle="Egy hely, ahonnan a tervezett mérőeszközök látszanak" />
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+            {CHANNELS.map((c) => (
+              <div key={c.name} className="border border-foreground/10 rounded-lg p-6 relative">
+                <span className="absolute top-4 right-4 text-[10px] font-mono tracking-wider text-muted-foreground/60 border border-foreground/10 rounded px-1.5 py-0.5">
+                  MINTA
+                </span>
+                <p className="text-xs font-mono text-muted-foreground mb-4">{c.name}</p>
+                <div className="space-y-3">
+                  {c.stats.map((s) => (
+                    <div key={s.label}>
+                      <div className="text-2xl font-display tracking-tight">{s.value}</div>
+                      <p className="text-xs text-muted-foreground">{s.label}</p>
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground/80 mt-4 pt-4 border-t border-foreground/10">
+                  {c.desc}
+                </p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* =============== Section 01 — Teljes funnel elemzés =============== */}
+        <section className="py-24 lg:py-32 border-b border-foreground/10">
+          <div className="flex items-start justify-between gap-4 mb-12 lg:mb-16">
+            <SectionHeader num="01" title="Teljes funnel elemzés" subtitle="Forgalomtól a lefoglalt konzultációig — a tervezett útvonal előnézete" />
+            <span className="shrink-0 mt-1 text-[10px] font-mono tracking-wider text-muted-foreground/60 border border-foreground/10 rounded px-1.5 py-0.5">
+              MINTA
+            </span>
+          </div>
+
+          <div className="max-w-2xl space-y-6">
+            {FUNNEL_STEPS.map((step, i) => {
+              const prev = FUNNEL_STEPS[i - 1];
+              const pct = prev ? Math.round((step.value / prev.value) * 100) : null;
+              return (
+                <div key={step.label}>
+                  <HorizontalBar label={step.label} value={step.value} max={FUNNEL_STEPS[0].value} delay={i * 80} />
+                  <div className="flex justify-between items-baseline mt-1">
+                    {step.note ? (
+                      <p className="text-xs text-muted-foreground/70">{step.note}</p>
+                    ) : <span />}
+                    {pct !== null && (
+                      <span className="font-mono text-xs text-muted-foreground/70">{pct}% az előző lépéshez képest</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* =============== Section 02 — Kampány teljesítmény =============== */}
+        <section className="py-24 lg:py-32 border-b border-foreground/10">
+          <SectionHeader num="02" title="Kampány teljesítmény" subtitle="Egyedi landing oldalak összehasonlítása" />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {pages.map((p) => {
@@ -498,7 +599,7 @@ export function Dashboard({
 
         {/* =============== Section 01 — Áttekintés =============== */}
         <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="01" title="Áttekintés" subtitle="Összesített teljesítménymutatók" />
+          <SectionHeader num="03" title="Áttekintés" subtitle="Összesített teljesítménymutatók" />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-foreground/10">
             {/* Oldalmegtekintés */}
@@ -545,7 +646,7 @@ export function Dashboard({
 
         {/* =============== Section 02 — Forgalom trend =============== */}
         <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="02" title="Forgalom trend" subtitle="Napi oldalmegtekintések és látogatók" />
+          <SectionHeader num="04" title="Forgalom trend" subtitle="Napi oldalmegtekintések és látogatók" />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Line chart */}
@@ -586,7 +687,7 @@ export function Dashboard({
 
         {/* =============== Section 03 — Landing oldalak =============== */}
         <section className="pb-24 lg:pb-32 border-b border-foreground/10">
-          <SectionHeader num="03" title="Landing oldalak" subtitle="Teljesítmény összehasonlítás" />
+          <SectionHeader num="05" title="Landing oldalak" subtitle="Teljesítmény összehasonlítás" />
 
           <div>
             {pages.map((p, index) => {
@@ -613,7 +714,7 @@ export function Dashboard({
 
         {/* =============== Section 04 — Forgalom részletei =============== */}
         <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="04" title="Forgalom részletei" subtitle="Források, eszközök, böngészők" />
+          <SectionHeader num="06" title="Forgalom részletei" subtitle="Források, eszközök, böngészők" />
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Sources donut */}
@@ -648,7 +749,7 @@ export function Dashboard({
 
         {/* =============== Section 05 — Részletes bontás =============== */}
         <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="05" title="Részletes bontás" subtitle="Városok és legnépszerűbb oldalak" />
+          <SectionHeader num="07" title="Részletes bontás" subtitle="Városok és legnépszerűbb oldalak" />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Top cities */}
@@ -691,7 +792,7 @@ export function Dashboard({
         {/* =============== Section 06 — Egyedi események =============== */}
         {activeEvents.length > 0 && (
           <section className="py-24 lg:py-32 border-b border-foreground/10">
-            <SectionHeader num="06" title="Egyedi események" subtitle="CTA kattintások és interakciók" />
+            <SectionHeader num="08" title="Egyedi események" subtitle="CTA kattintások és interakciók" />
 
             <div className="space-y-4">
               {activeEvents.map((e, i) => (
@@ -704,10 +805,10 @@ export function Dashboard({
         {/* =============== Footer =============== */}
         <footer className="py-16 text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
-            <span className="font-display text-lg tracking-tight">Expert Flow</span>
+            <span className="font-display text-lg tracking-tight">business native</span>
           </div>
           <p className="font-mono text-xs text-muted-foreground">
-            PostHog Analytics Dashboard — 2026
+            Analitikai rutin — 2026
           </p>
         </footer>
       </main>

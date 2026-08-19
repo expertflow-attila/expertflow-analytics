@@ -1,22 +1,25 @@
 import React from "react"
 import type { Metadata } from 'next'
-import { Instrument_Sans, Instrument_Serif, JetBrains_Mono } from 'next/font/google'
+import { Geist, Geist_Mono } from 'next/font/google'
 import { ThemeProvider } from "@/components/theme-provider"
 import './globals.css'
 
-const instrumentSans = Instrument_Sans({ subsets: ["latin", "latin-ext"], variable: '--font-instrument' });
-const instrumentSerif = Instrument_Serif({ subsets: ["latin", "latin-ext"], weight: "400", variable: '--font-instrument-serif' });
-const jetbrainsMono = JetBrains_Mono({ subsets: ["latin", "latin-ext"], variable: '--font-jetbrains' });
+// A businessnative.hu élő oldala Geist Variable-t (törzs+cím) és Geist Mono
+// Variable-t (kicker/mono szövegek) használ — ld. a Webflow-tükör
+// megosztott CSS-jét (--_🔠-typography---font--body / --font--heading-serif
+// mindkettő Geist Variable-re mutat, nincs valódi szerif a márkában).
+const geistSans = Geist({ subsets: ["latin", "latin-ext"], variable: '--font-geist-sans' });
+const geistMono = Geist_Mono({ subsets: ["latin", "latin-ext"], variable: '--font-geist-mono' });
 
 export const metadata: Metadata = {
-  title: 'Expert Flow — Analytics',
-  description: 'Landing page teljesitmeny es latogatoi viselkedes valos idoben.',
+  title: 'Business Native — Analitikai rutin',
+  description: 'Minta-nézet arról, hogyan nézne ki a businessnative.hu forgalma egy dashboardon — illusztratív adatokkal.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="hu" suppressHydrationWarning>
-      <body className={`${instrumentSans.variable} ${instrumentSerif.variable} ${jetbrainsMono.variable} font-sans antialiased`}>
+      <body className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           {children}
         </ThemeProvider>

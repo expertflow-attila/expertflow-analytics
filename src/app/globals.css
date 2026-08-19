@@ -3,81 +3,85 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* A paletta a businessnative.hu élő design-tokenjeiből (Webflow-tükör
+   shared.css) — nem generikus szürkeárnyalat, hanem a márka tényleges
+   háttér/szöveg/accent hexei. Világos mód = a márka world-világos témája,
+   sötét mód (alapértelmezett) = a márka dark témája. */
 :root {
-  --background: oklch(0.985 0 0);
-  --foreground: oklch(0.12 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.12 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.12 0 0);
-  --primary: oklch(0.12 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.12 0 0);
-  --muted: oklch(0.94 0 0);
-  --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.92 0 0);
-  --accent-foreground: oklch(0.12 0 0);
+  --background: #f6f3ec;
+  --foreground: #0a0a0b;
+  --card: #fcfaf6;
+  --card-foreground: #0a0a0b;
+  --popover: #fcfaf6;
+  --popover-foreground: #0a0a0b;
+  --primary: #0a0a0b;
+  --primary-foreground: #f6f3ec;
+  --secondary: color-mix(in srgb, #0a0a0b 6%, transparent);
+  --secondary-foreground: #0a0a0b;
+  --muted: color-mix(in srgb, #0a0a0b 8%, transparent);
+  --muted-foreground: color-mix(in srgb, #0a0a0b 64%, transparent);
+  --accent: #c0c0e7;
+  --accent-foreground: #0a0a0b;
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.88 0 0);
-  --input: oklch(0.92 0 0);
-  --ring: oklch(0.12 0 0);
-  --chart-1: oklch(0.12 0 0);
-  --chart-2: oklch(0.35 0 0);
-  --chart-3: oklch(0.55 0 0);
-  --chart-4: oklch(0.70 0 0);
-  --chart-5: oklch(0.85 0 0);
+  --border: color-mix(in srgb, #0a0a0b 16%, transparent);
+  --input: color-mix(in srgb, #0a0a0b 16%, transparent);
+  --ring: #c0c0e7;
+  --chart-1: #0a0a0b;
+  --chart-2: color-mix(in srgb, #0a0a0b 70%, transparent);
+  --chart-3: color-mix(in srgb, #0a0a0b 50%, transparent);
+  --chart-4: color-mix(in srgb, #0a0a0b 30%, transparent);
+  --chart-5: #c0c0e7;
   --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --sidebar: #f6f3ec;
+  --sidebar-foreground: #0a0a0b;
+  --sidebar-primary: #0a0a0b;
+  --sidebar-primary-foreground: #f6f3ec;
+  --sidebar-accent: color-mix(in srgb, #0a0a0b 8%, transparent);
+  --sidebar-accent-foreground: #0a0a0b;
+  --sidebar-border: color-mix(in srgb, #0a0a0b 16%, transparent);
+  --sidebar-ring: #c0c0e7;
 }
 
 .dark {
-  --background: oklch(0.08 0 0);
-  --foreground: oklch(0.95 0 0);
-  --card: oklch(0.1 0 0);
-  --card-foreground: oklch(0.95 0 0);
-  --popover: oklch(0.1 0 0);
-  --popover-foreground: oklch(0.95 0 0);
-  --primary: oklch(0.95 0 0);
-  --primary-foreground: oklch(0.08 0 0);
-  --secondary: oklch(0.15 0 0);
-  --secondary-foreground: oklch(0.95 0 0);
-  --muted: oklch(0.18 0 0);
-  --muted-foreground: oklch(0.55 0 0);
-  --accent: oklch(0.15 0 0);
-  --accent-foreground: oklch(0.95 0 0);
+  --background: #0a0a0b;
+  --foreground: #f6f3ec;
+  --card: #121212;
+  --card-foreground: #f6f3ec;
+  --popover: #121212;
+  --popover-foreground: #f6f3ec;
+  --primary: #f6f3ec;
+  --primary-foreground: #0a0a0b;
+  --secondary: color-mix(in srgb, #f6f3ec 8%, transparent);
+  --secondary-foreground: #f6f3ec;
+  --muted: color-mix(in srgb, #f6f3ec 8%, transparent);
+  --muted-foreground: color-mix(in srgb, #f6f3ec 64%, transparent);
+  --accent: #c0c0e7;
+  --accent-foreground: #0a0a0b;
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.577 0.245 27.325);
-  --border: oklch(0.2 0 0);
-  --input: oklch(0.18 0 0);
-  --ring: oklch(0.95 0 0);
-  --chart-1: oklch(0.95 0 0);
-  --chart-2: oklch(0.75 0 0);
-  --chart-3: oklch(0.55 0 0);
-  --chart-4: oklch(0.40 0 0);
-  --chart-5: oklch(0.25 0 0);
-  --sidebar: oklch(0.08 0 0);
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.95 0 0);
-  --sidebar-primary-foreground: oklch(0.08 0 0);
-  --sidebar-accent: oklch(0.15 0 0);
-  --sidebar-accent-foreground: oklch(0.95 0 0);
-  --sidebar-border: oklch(0.2 0 0);
-  --sidebar-ring: oklch(0.4 0 0);
+  --border: color-mix(in srgb, #f6f3ec 16%, transparent);
+  --input: color-mix(in srgb, #f6f3ec 16%, transparent);
+  --ring: #c0c0e7;
+  --chart-1: #f6f3ec;
+  --chart-2: color-mix(in srgb, #f6f3ec 75%, transparent);
+  --chart-3: color-mix(in srgb, #f6f3ec 55%, transparent);
+  --chart-4: color-mix(in srgb, #f6f3ec 35%, transparent);
+  --chart-5: #c0c0e7;
+  --sidebar: #0a0a0b;
+  --sidebar-foreground: #f6f3ec;
+  --sidebar-primary: #f6f3ec;
+  --sidebar-primary-foreground: #0a0a0b;
+  --sidebar-accent: color-mix(in srgb, #f6f3ec 8%, transparent);
+  --sidebar-accent-foreground: #f6f3ec;
+  --sidebar-border: color-mix(in srgb, #f6f3ec 16%, transparent);
+  --sidebar-ring: #c0c0e7;
 }
 
 @theme inline {
-  --font-sans: var(--font-instrument), 'Instrument Sans', system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), 'JetBrains Mono', monospace;
-  --font-display: var(--font-instrument-serif), 'Instrument Serif', Georgia, serif;
+  --font-sans: var(--font-geist-sans), 'Geist', system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), 'Geist Mono', monospace;
+  --font-display: var(--font-geist-sans), 'Geist', system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
