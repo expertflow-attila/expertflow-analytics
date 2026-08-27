@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: funnel_intelligence
+      POSTGRES_USER: funnel
+      POSTGRES_PASSWORD: funnel_local
+    ports: ["5432:5432"]
+    volumes: ["funnel_pg:/var/lib/postgresql/data"]
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+volumes:
+  funnel_pg:
