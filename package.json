@@ -6,7 +6,16 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:integration": "vitest run tests/integration",
+    "typecheck": "tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx scripts/seed.ts",
+    "db:reset": "tsx scripts/reset.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",
@@ -53,5 +62,7 @@
     "typescript": "^5",
     "vitest": "^4.1.11"
   },
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@10.33.0",
+  "license": "AGPL-3.0-only",
+  "description": "Open-source AI-powered customer journey, funnel analytics and revenue intelligence platform"
 }
