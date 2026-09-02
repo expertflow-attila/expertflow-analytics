@@ -5,7 +5,13 @@ import type { EventEnvelope } from "@/lib/events/schema";
 import { LEAD_EVENTS, REVENUE_EVENTS } from "@/lib/events/taxonomy";
 import { newId } from "@/server/db/schema/_helpers";
 import type { Db } from "@/server/db";
-import { events, ingestLogs, sessions, touchpoints } from "@/server/db/schema";
+import {
+  anonymousIdentities,
+  events,
+  ingestLogs,
+  sessions,
+  touchpoints,
+} from "@/server/db/schema";
 import { resolveIdentity } from "@/server/identity/resolve";
 
 export type IngestContext = {
@@ -51,7 +57,13 @@ export async function ingestEvents(
 
   for (const [index, envelope] of envelopes.entries()) {
     try {
-      const outcome = await ingestOne(db, ctx, envelope);
+      // Each event is atomic: either the event row, its session, its touchpoint
+      // and its identity resolution all land, or none of them do. Without this
+      // a mid-way failure leaves a stored event that the response reports as
+      // rejected, and the client retries it into a duplicate.
+      const outcome = await db.transaction((tx) =>
+        ingestOne(tx as unknown as Db, ctx, envelope),
+      );
       if (outcome === "duplicate") result.duplicates += 1;
       else result.accepted += 1;
     } catch (error) {
@@ -59,7 +71,9 @@ export async function ingestEvents(
       result.errors.push({
         index,
         code: "INGEST_FAILED",
-        message: error instanceof Error ? error.message : "Unknown error",
+        message: sanitiseErrorDetail(
+          error instanceof Error ? error.message : "Unknown error",
+        ),
       });
     }
   }
@@ -99,6 +113,14 @@ async function ingestOne(
     envelope.event_name,
   );
 
+  // An SDK identifies once per person, then sends only the anonymous id on
+  // every later event. Without this lookup each of those events — including
+  // purchases — would be stored orphaned, and revenue would never reconcile
+  // to a customer.
+  const knownPersonId = envelope.anonymous_id
+    ? await lookupPersonByAnonymousId(db, ctx.projectId, envelope.anonymous_id)
+    : null;
+
   const inserted = await db
     .insert(events)
     .values({
@@ -109,7 +131,7 @@ async function ingestOne(
       eventVersion: envelope.event_version,
       timestamp,
       anonymousId: envelope.anonymous_id ?? null,
-      personId: null,
+      personId: knownPersonId,
       sessionKey: envelope.session_id ?? null,
       pageUrl: envelope.page?.url ?? null,
       pagePath: envelope.page?.path ?? derivePath(envelope.page?.url),
@@ -138,6 +160,7 @@ async function ingestOne(
       timestamp,
       channel,
       referrer,
+      personId: knownPersonId,
     });
   }
 
@@ -147,6 +170,7 @@ async function ingestOne(
       organizationId: ctx.organizationId,
       projectId: ctx.projectId,
       anonymousId: envelope.anonymous_id,
+      personId: knownPersonId,
       sessionKey: envelope.session_id ?? null,
       occurredAt: timestamp,
       channel,
@@ -191,7 +215,12 @@ async function upsertSession(
   db: Db,
   ctx: IngestContext,
   envelope: EventEnvelope,
-  derived: { timestamp: Date; channel: string; referrer: string | null },
+  derived: {
+    timestamp: Date;
+    channel: string;
+    referrer: string | null;
+    personId: string | null;
+  },
 ): Promise<void> {
   await db
     .insert(sessions)
@@ -200,6 +229,7 @@ async function upsertSession(
       projectId: ctx.projectId,
       sessionKey: envelope.session_id!,
       anonymousId: envelope.anonymous_id!,
+      personId: derived.personId,
       startedAt: derived.timestamp,
       endedAt: derived.timestamp,
       entryPath: envelope.page?.path ?? derivePath(envelope.page?.url),
@@ -220,10 +250,50 @@ async function upsertSession(
       set: {
         // The session keeps its ORIGINAL acquisition attributes; only the
         // end time and counter move forward.
-        endedAt: sql`greatest(${sessions.endedAt}, ${derived.timestamp})`,
+        //
+        // `excluded` refers to the row this statement tried to insert, so the
+        // timestamp is already a typed timestamptz. Passing the Date as a bound
+        // parameter here instead makes Postgres compare timestamptz against an
+        // untyped string literal and fail.
+        endedAt: sql`greatest(${sessions.endedAt}, excluded.ended_at)`,
         eventCount: sql`${sessions.eventCount} + 1`,
       },
     });
+}
+
+/**
+ * Makes an error message safe to store and return.
+ *
+ * A database error message quotes the offending parameters, so it can contain
+ * the very bytes that caused the failure — a null byte in particular, which
+ * Postgres rejects in text columns. Writing it back unmodified would make the
+ * error log insert fail too, turning one bad event into a failed batch.
+ */
+function sanitiseErrorDetail(message: string): string {
+  return message
+    .replace(/\u0000/g, "\\u0000")
+    .replace(/[\u0001-\u001f\u007f]/g, " ")
+    .slice(0, 2000);
+}
+
+/** Resolves a browser identity to its person, if one has been linked. */
+async function lookupPersonByAnonymousId(
+  db: Db,
+  projectId: string,
+  anonymousId: string,
+): Promise<string | null> {
+  const [row] = await db
+    .select({ personId: anonymousIdentities.personId })
+    .from(anonymousIdentities)
+    .where(
+      and(
+        eq(anonymousIdentities.projectId, projectId),
+        eq(anonymousIdentities.anonymousId, anonymousId),
+      ),
+    )
+    .limit(1);
+
+  return row?.personId ?? null;
 }
 
 function normaliseTimestamp(input: string | undefined): Date {

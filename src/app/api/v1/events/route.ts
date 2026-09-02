@@ -68,7 +68,14 @@ export async function POST(request: NextRequest) {
   const single = batch.success ? null : eventEnvelopeSchema.safeParse(body);
 
   if (!batch.success && !single?.success) {
-    const issues = (batch.success ? [] : batch.error.issues).map((i) => ({
+    // Report against the shape the caller actually sent. A single envelope
+    // failing the batch schema would otherwise be told "expected array", which
+    // says nothing about the field that is really wrong.
+    const looksLikeBatch =
+      typeof body === "object" && body !== null && "events" in body;
+    const source = looksLikeBatch ? batch.error : (single?.error ?? batch.error);
+
+    const issues = source.issues.map((i) => ({
       path: i.path.join("."),
       message: i.message,
     }));

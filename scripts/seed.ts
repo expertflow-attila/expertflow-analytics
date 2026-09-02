@@ -235,10 +235,13 @@ async function main() {
       name: "Main website",
       slug: "main-website",
       baseCurrency: "EUR",
+      // Drives the demo-data banner. Generated numbers must never be
+      // presented as if they were measurements.
+      settings: { demoDataset: true },
     })
     .onConflictDoUpdate({
       target: [projects.organizationId, projects.slug],
-      set: { name: "Main website" },
+      set: { name: "Main website", settings: { demoDataset: true } },
     })
     .returning();
 
