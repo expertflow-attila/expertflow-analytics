@@ -29,10 +29,6 @@ function seededRandom(seed: number): () => number {
 
 const rng = seededRandom(20260313);
 
-function randInt(min: number, max: number): number {
-  return Math.floor(rng() * (max - min + 1)) + min;
-}
-
 // Generate 45 days of daily data for a page
 function generateDailyForPage(baseDaily: number, growthFactor: number): { pageviews: number; visitors: number }[] {
   const days: { pageviews: number; visitors: number }[] = [];

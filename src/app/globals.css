@@ -8,6 +8,8 @@
    háttér/szöveg/accent hexei. Világos mód = a márka world-világos témája,
    sötét mód (alapértelmezett) = a márka dark témája. */
 :root {
+  --font-geist-sans: "Geist", "Inter", system-ui, sans-serif;
+  --font-geist-mono: "Geist Mono", "SFMono-Regular", Consolas, monospace;
   --background: #f6f3ec;
   --foreground: #0a0a0b;
   --card: #fcfaf6;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Sun, Moon } from "lucide-react";
 import { useTheme } from "next-themes";
 import type {
@@ -140,7 +140,7 @@ function LineChart({ data, height = 200 }: { data: { date: string; pageviews: nu
   }));
 
   // X-axis labels (show every ~10th)
-  const xLabels = data.filter((_, i) => i % 10 === 0 || i === data.length - 1).map((d, _, arr) => {
+  const xLabels = data.filter((_, i) => i % 10 === 0 || i === data.length - 1).map((d) => {
     const idx = data.indexOf(d);
     return {
       label: d.date.slice(5),
@@ -185,16 +185,16 @@ function DonutChart({ data, size = 120 }: { data: { label: string; value: number
   const r = size / 2 - 8;
   const cx = size / 2;
   const cy = size / 2;
-  let cumAngle = -Math.PI / 2;
   const opacities = [1, 0.7, 0.5, 0.35, 0.2];
 
   const arcs = data.map((d, i) => {
     const angle = (d.value / total) * 2 * Math.PI;
-    const startX = cx + r * Math.cos(cumAngle);
-    const startY = cy + r * Math.sin(cumAngle);
-    cumAngle += angle;
-    const endX = cx + r * Math.cos(cumAngle);
-    const endY = cy + r * Math.sin(cumAngle);
+    const startAngle = -Math.PI / 2 + data.slice(0, i).reduce((sum, item) => sum + (item.value / total) * 2 * Math.PI, 0);
+    const endAngle = startAngle + angle;
+    const startX = cx + r * Math.cos(startAngle);
+    const startY = cy + r * Math.sin(startAngle);
+    const endX = cx + r * Math.cos(endAngle);
+    const endY = cy + r * Math.sin(endAngle);
     const largeArc = angle > Math.PI ? 1 : 0;
     const path = `M${cx},${cy} L${startX},${startY} A${r},${r} 0 ${largeArc},1 ${endX},${endY} Z`;
     return (
@@ -349,8 +349,7 @@ const FUNNEL_STEPS: { label: string; value: number; note?: string }[] = [
 
 function ThemeToggle() {
   const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(() => () => undefined, () => true, () => false);
   if (!mounted) return <div className="size-9" />;
   return (
     <button
@@ -436,7 +435,6 @@ export function Dashboard({
   const activeEvents = selectedPage === "all" ? events : (eventsByPage[selectedPage] || events);
   const activeTopPages = selectedPage === "all" ? topPages : topPages.filter(p => p.host === selectedPage);
 
-  const maxSourceCount = Math.max(...activeSources.map(s => s.count), 1);
   const maxCityCount = Math.max(...cities.map(c => c.count), 1);
   const maxEventCount = Math.max(...activeEvents.map(e => e.count), 1);
   const maxBrowserCount = Math.max(...activeBrowsers.map(b => b.count), 1);
