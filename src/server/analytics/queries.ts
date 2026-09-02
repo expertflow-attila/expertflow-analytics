@@ -3,6 +3,7 @@ import {
   asc,
   desc,
   eq,
+  gt,
   gte,
   inArray,
   isNotNull,
@@ -664,6 +665,15 @@ export async function listJourneys(
 ) {
   const { limit = 50, onlyCustomers = false } = options;
 
+  /**
+   * Deliberately three queries rather than correlated subqueries.
+   *
+   * Inside a `.select({...})` projection Drizzle renders a column reference
+   * unqualified — `${persons.id}` becomes `"id"`, not `"persons"."id"`. In a
+   * subquery over a table that also has an `id` column that silently binds to
+   * the INNER table, so the correlation is lost and every row comes back null
+   * with no error. Joining explicitly removes the trap entirely.
+   */
   const rows = await db
     .select({
       id: persons.id,
@@ -672,35 +682,66 @@ export async function listJourneys(
       firstSeenAt: persons.firstSeenAt,
       lastSeenAt: persons.lastSeenAt,
       lifetimeRevenueMinor: persons.lifetimeRevenueMinor,
-      firstTouchChannel: sql<string | null>`(
-        select t.channel from touchpoints t
-        where t.person_id = ${persons.id}
-        order by t.occurred_at asc limit 1
-      )`,
-      lastTouchChannel: sql<string | null>`(
-        select t.channel from touchpoints t
-        where t.person_id = ${persons.id}
-        order by t.occurred_at desc limit 1
-      )`,
-      eventCount: sql<number>`(
-        select count(*) from events e where e.person_id = ${persons.id}
-      )`,
     })
     .from(persons)
     .where(
       onlyCustomers
         ? and(
             eq(persons.projectId, ctx.projectId),
-            sql`${persons.lifetimeRevenueMinor} > 0`,
+            gt(persons.lifetimeRevenueMinor, 0),
           )
         : eq(persons.projectId, ctx.projectId),
     )
     .orderBy(desc(persons.lifetimeRevenueMinor), desc(persons.lastSeenAt))
     .limit(limit);
 
+  if (rows.length === 0) return [];
+
+  const ids = rows.map((row) => row.id);
+
+  const touchRows = await db
+    .select({
+      personId: touchpoints.personId,
+      channel: touchpoints.channel,
+      occurredAt: touchpoints.occurredAt,
+    })
+    .from(touchpoints)
+    .where(
+      and(
+        eq(touchpoints.projectId, ctx.projectId),
+        inArray(touchpoints.personId, ids),
+      ),
+    )
+    .orderBy(asc(touchpoints.occurredAt));
+
+  const firstTouch = new Map<string, string>();
+  const lastTouch = new Map<string, string>();
+  for (const row of touchRows) {
+    if (!row.personId) continue;
+    if (!firstTouch.has(row.personId)) firstTouch.set(row.personId, row.channel);
+    lastTouch.set(row.personId, row.channel);
+  }
+
+  const countRows = await db
+    .select({
+      personId: events.personId,
+      total: sql<number>`count(*)`,
+    })
+    .from(events)
+    .where(
+      and(eq(events.projectId, ctx.projectId), inArray(events.personId, ids)),
+    )
+    .groupBy(events.personId);
+
+  const counts = new Map(
+    countRows.map((row) => [row.personId!, Number(row.total)]),
+  );
+
   return rows.map((row) => ({
     ...row,
-    eventCount: Number(row.eventCount),
+    firstTouchChannel: firstTouch.get(row.id) ?? null,
+    lastTouchChannel: lastTouch.get(row.id) ?? null,
+    eventCount: counts.get(row.id) ?? 0,
   }));
 }
 

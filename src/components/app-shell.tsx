@@ -3,14 +3,12 @@
 import {
   Activity,
   BarChart3,
-  Beaker,
   Building2,
   GitBranch,
   Layers,
   LineChart,
   Route,
   Settings,
-  Sparkles,
   Target,
   Users,
 } from "lucide-react";
@@ -42,12 +40,13 @@ const NAV_GROUPS: Array<{ label: string | null; items: NavItem[] }> = [
       { href: "/revenue", label: "Revenue", icon: LineChart },
     ],
   },
+  // Experiments and the AI Analyst are modelled in the schema but have no
+  // implementation yet, so they are deliberately absent from navigation rather
+  // than linking to a page that pretends to work.
   {
     label: "Operate",
     items: [
-      { href: "/experiments", label: "Experiments", icon: Beaker },
       { href: "/tracking-health", label: "Tracking Health", icon: Activity },
-      { href: "/ai", label: "AI Analyst", icon: Sparkles },
     ],
   },
   {
