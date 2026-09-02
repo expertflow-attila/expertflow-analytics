@@ -448,7 +448,15 @@ export async function loadDailySeries(
   revenue: Array<{ date: string; value: number }>;
 }> {
   const bucket = (column: typeof events.timestamp) =>
-    sql<string>`to_char(${column} at time zone ${ctx.timezone}, 'YYYY-MM-DD')`;
+    sql<string>`to_char(${column} at time zone ${ctx.timezone}::text, 'YYYY-MM-DD')`;
+
+  /**
+   * Group and order by ordinal position rather than by repeating the
+   * expression. The timezone arrives as a bound parameter, so repeating the
+   * expression produces a different placeholder ($5 rather than $1) and
+   * Postgres no longer recognises the two as the same expression.
+   */
+  const byBucket = sql`1`;
 
   const visitorRows = await db
     .select({
@@ -464,8 +472,8 @@ export async function loadDailySeries(
         lte(events.timestamp, range.to),
       ),
     )
-    .groupBy(bucket(events.timestamp))
-    .orderBy(bucket(events.timestamp));
+    .groupBy(byBucket)
+    .orderBy(byBucket);
 
   const leadRows = await db
     .select({
@@ -481,10 +489,10 @@ export async function loadDailySeries(
         lte(events.timestamp, range.to),
       ),
     )
-    .groupBy(bucket(events.timestamp))
-    .orderBy(bucket(events.timestamp));
+    .groupBy(byBucket)
+    .orderBy(byBucket);
 
-  const revenueBucket = sql<string>`to_char(${orders.occurredAt} at time zone ${ctx.timezone}, 'YYYY-MM-DD')`;
+  const revenueBucket = sql<string>`to_char(${orders.occurredAt} at time zone ${ctx.timezone}::text, 'YYYY-MM-DD')`;
   const revenueRows = await db
     .select({
       date: revenueBucket,
@@ -498,8 +506,8 @@ export async function loadDailySeries(
         lte(orders.occurredAt, range.to),
       ),
     )
-    .groupBy(revenueBucket)
-    .orderBy(revenueBucket);
+    .groupBy(byBucket)
+    .orderBy(byBucket);
 
   const toSeries = (rows: Array<{ date: string; value: unknown }>) =>
     rows.map((r) => ({ date: r.date, value: Number(r.value) }));
