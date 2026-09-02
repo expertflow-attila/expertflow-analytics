@@ -1,8 +1,9 @@
 /**
  * Funnel Intelligence OS — browser tracking SDK
  *
- * Dependency-free, async, non-blocking. Authored directly as ES5-compatible
- * IIFE JavaScript so it needs no build step and can be served from any origin.
+ * Dependency-free, async, non-blocking. Authored directly as an IIFE so it
+ * needs no build step and can be served from any origin. Targets browsers with
+ * fetch, Promise and URLSearchParams — the same baseline the app itself needs.
  *
  * Usage:
  *   <script src="https://your-app.com/sdk.js" data-project-key="pk_..."></script>
@@ -68,7 +69,7 @@
     try {
       var raw = localStorage.getItem(key);
       return raw ? JSON.parse(raw) : null;
-    } catch (e) {
+    } catch {
       return null;
     }
   }
@@ -76,7 +77,7 @@
   function write(key, value) {
     try {
       localStorage.setItem(key, JSON.stringify(value));
-    } catch (e) {
+    } catch {
       /* storage disabled or full — tracking degrades, page keeps working */
     }
   }
@@ -84,7 +85,7 @@
   function remove(key) {
     try {
       localStorage.removeItem(key);
-    } catch (e) {}
+    } catch {}
   }
 
   /* --- ids ---------------------------------------------------------------- */
