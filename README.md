@@ -118,7 +118,8 @@ merely plausible.
 
 See [docs/architecture.md](docs/architecture.md),
 [docs/analytics.md](docs/analytics.md),
-[docs/attribution.md](docs/attribution.md) and
+[docs/attribution.md](docs/attribution.md),
+[docs/ai.md](docs/ai.md) and
 [docs/privacy.md](docs/privacy.md).
 
 ## Tests
@@ -138,14 +139,22 @@ every model.
 
 ## Status
 
-Implemented: multi-tenant foundation, event ingestion, identity resolution,
-the browser SDK, funnel/attribution/LTV/opportunity/anomaly/tracking-health
-engines, and the analytics surfaces listed in the navigation.
+Implemented: multi-tenant foundation, registration and workspace setup, event
+ingestion, identity resolution, the browser SDK, Stripe and generic webhook
+ingestion with revenue reconciliation, the funnel, attribution, LTV,
+opportunity, anomaly and tracking-health engines, the AI Analyst, and every
+surface listed in the navigation.
 
-Not yet implemented: Stripe ingestion, CSV import/export, the experiments
-module, the AI Analyst and the MCP server. These are modelled in the schema but
-have no implementation, and are deliberately absent from the navigation rather
-than shown as pages that do nothing.
+Not yet implemented: CSV import and export, the experiments module, the MCP
+server, and the scheduled jobs for data retention and subject requests. These
+are modelled in the schema or described in the docs but have no implementation,
+and are deliberately absent from the navigation rather than shown as pages that
+do nothing.
+
+One caveat worth stating plainly: the HTTP adapters for the Anthropic and
+OpenAI providers have not been exercised against a live API, because both
+available keys were out of credit. The agent loop around them is covered by
+tests. See [docs/ai.md](docs/ai.md).
 
 ## Licence
 

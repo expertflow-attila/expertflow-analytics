@@ -12,9 +12,19 @@ const globalForDb = globalThis as unknown as {
   __fiosClient?: ReturnType<typeof postgres>;
 };
 
+/**
+ * Under test the singleton points at the test database, so code that reaches
+ * for `db` directly — the AI tools, for instance — is exercised against the
+ * same schema the tests seed rather than a developer's working database.
+ */
+const connectionString =
+  env.NODE_ENV === "test"
+    ? (process.env.TEST_DATABASE_URL ?? env.DATABASE_URL)
+    : env.DATABASE_URL;
+
 const client =
   globalForDb.__fiosClient ??
-  postgres(env.DATABASE_URL, {
+  postgres(connectionString, {
     max: env.NODE_ENV === "production" ? 10 : 3,
     prepare: false,
   });
