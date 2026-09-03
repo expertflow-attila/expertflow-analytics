@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Build output from the Vercel CLI. Minified bundles are not source, and
+    // linting them buries real findings under thousands of false ones.
+    ".vercel/**",
+    "drizzle/**",
   ]),
 ]);
 

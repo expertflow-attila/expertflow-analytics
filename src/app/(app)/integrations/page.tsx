@@ -99,6 +99,60 @@ funnel.track("purchase_completed", {}, {
 
         <Card>
           <CardHeader>
+            <CardTitle>Webhooks</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <p className="text-xs font-medium">Stripe</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                Add this as a webhook endpoint in your Stripe dashboard, then
+                store the signing secret on the integration. When Stripe is
+                connected its records become the canonical source of revenue and
+                browser purchase events are reconciled against them.
+              </p>
+              <pre className="overflow-x-auto rounded-md bg-surface-muted px-3 py-2.5 font-mono text-2xs">
+                {`${appUrl}/api/webhooks/stripe?project=${ctx.projectId}`}
+              </pre>
+              <p className="text-2xs text-subtle-foreground">
+                Handled events: checkout.session.completed,
+                payment_intent.succeeded, charge.refunded,
+                invoice.payment_succeeded, customer.subscription.*
+              </p>
+            </div>
+
+            <div className="space-y-2 border-t border-border pt-4">
+              <p className="text-xs font-medium">Generic webhook</p>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                For any other tool. Configure a signing secret and a field
+                mapping, and the payload is translated into an event.
+              </p>
+              <pre className="overflow-x-auto rounded-md bg-surface-muted px-3 py-2.5 font-mono text-2xs">
+                {`${appUrl}/api/webhooks/webhook?project=${ctx.projectId}`}
+              </pre>
+              <pre className="overflow-x-auto rounded-md bg-surface-muted px-3 py-2.5 font-mono text-2xs leading-relaxed">
+                {`{
+  "secret": "your-signing-secret",
+  "signatureHeader": "x-signature",
+  "mapping": {
+    "event_name": "=call_booked",
+    "event_id": "payload.event.uuid",
+    "email": "payload.invitee.email",
+    "timestamp": "payload.created_at"
+  }
+}`}
+              </pre>
+              <p className="text-2xs leading-relaxed text-subtle-foreground">
+                A value starting with <code className="font-mono">=</code> is a
+                literal; anything else is a dot-path into the payload. Requests
+                without a valid signature are rejected — an unauthenticated
+                endpoint that writes revenue is an open door.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
             <CardTitle>API keys</CardTitle>
           </CardHeader>
           <CardContent>

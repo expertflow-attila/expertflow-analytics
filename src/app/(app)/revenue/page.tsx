@@ -3,7 +3,7 @@ import { and, desc, eq, gte, lte } from "drizzle-orm";
 import { DemoDataBanner, PageBody, PageHeader, StatTile } from "@/components/page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Table, Td, Th } from "@/components/ui/primitives";
-import { formatCurrency, formatNumber } from "@/lib/utils";
+import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
 import {
   isDemoDataset,
   resolveProjectContext,
@@ -12,6 +12,7 @@ import {
 import { loadOverview, previousRange } from "@/server/analytics/queries";
 import { db } from "@/server/db";
 import { orders, persons } from "@/server/db/schema";
+import { reconcileRevenue } from "@/server/revenue/service";
 
 export const metadata = { title: "Revenue" };
 export const dynamic = "force-dynamic";
@@ -25,10 +26,11 @@ export default async function RevenuePage({
   const ctx = await resolveProjectContext();
   const { range } = resolveRange(rangeParam);
 
-  const [current, prior, demo] = await Promise.all([
+  const [current, prior, demo, reconciliation] = await Promise.all([
     loadOverview(ctx, range),
     loadOverview(ctx, previousRange(range)),
     isDemoDataset(ctx),
+    reconcileRevenue(db, ctx.projectId, range),
   ]);
 
   const recent = await db
@@ -140,6 +142,104 @@ export default async function RevenuePage({
             }
           />
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Reconciliation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {reconciliation.browserPurchaseEvents === 0 &&
+            reconciliation.canonicalOrders === 0 ? (
+              <p className="text-xs text-muted-foreground">
+                Nothing to reconcile in this period.
+              </p>
+            ) : (
+              <>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div>
+                    <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
+                      Provider records
+                    </p>
+                    <p className="tabular mt-1 text-sm font-medium">
+                      {formatNumber(reconciliation.canonicalOrders)} orders ·{" "}
+                      {formatCurrency(
+                        reconciliation.canonicalRevenueMinor,
+                        ctx.baseCurrency,
+                        { compact: true },
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
+                      Browser events
+                    </p>
+                    <p className="tabular mt-1 text-sm font-medium">
+                      {formatNumber(reconciliation.browserPurchaseEvents)} events ·{" "}
+                      {formatCurrency(
+                        reconciliation.browserRevenueMinor,
+                        ctx.baseCurrency,
+                        { compact: true },
+                      )}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
+                      Match rate
+                    </p>
+                    <p className="tabular mt-1 text-sm font-medium">
+                      {reconciliation.matchRate === null
+                        ? "—"
+                        : formatPercent(reconciliation.matchRate)}
+                    </p>
+                  </div>
+                </div>
+
+                {reconciliation.browserEventsWithoutOrder > 0 ||
+                reconciliation.ordersWithoutPerson > 0 ? (
+                  <ul className="mt-4 space-y-1.5 border-t border-border pt-3 text-xs">
+                    {reconciliation.browserEventsWithoutOrder > 0 ? (
+                      <li className="text-muted-foreground">
+                        <span className="font-medium text-foreground">
+                          {formatNumber(reconciliation.browserEventsWithoutOrder)}
+                        </span>{" "}
+                        browser purchase{" "}
+                        {reconciliation.browserEventsWithoutOrder === 1
+                          ? "event has"
+                          : "events have"}{" "}
+                        no matching provider record within 24 hours. Either the
+                        payment never completed, or the buyer was not identified
+                        at checkout.
+                      </li>
+                    ) : null}
+                    {reconciliation.ordersWithoutPerson > 0 ? (
+                      <li className="text-muted-foreground">
+                        <span className="font-medium text-foreground">
+                          {formatNumber(reconciliation.ordersWithoutPerson)}
+                        </span>{" "}
+                        provider{" "}
+                        {reconciliation.ordersWithoutPerson === 1
+                          ? "order could"
+                          : "orders could"}{" "}
+                        not be matched to a person, so{" "}
+                        {reconciliation.ordersWithoutPerson === 1
+                          ? "it is"
+                          : "they are"}{" "}
+                        excluded from attribution and LTV.
+                      </li>
+                    ) : null}
+                  </ul>
+                ) : null}
+
+                <p className="mt-3 text-2xs leading-relaxed text-subtle-foreground">
+                  Where a payment provider is connected its record is canonical.
+                  Browser purchase events are compared against it rather than
+                  trusted: an ad blocker or closed tab loses one, a double-fired
+                  tag invents one.
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>
