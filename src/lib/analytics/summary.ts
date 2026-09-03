@@ -13,7 +13,8 @@ export type SummaryInput = {
   previousNetRevenueMinor: number | null;
   topChannel: { name: string; revenueMinor: number } | null;
   biggestOpportunity: Opportunity | null;
-  trackingHealthScore: number;
+  /** Null when there is no data to assess; the caveat is then omitted. */
+  trackingHealthScore: number | null;
   locale?: string;
 };
 
@@ -66,7 +67,7 @@ export function buildExecutiveSummary(input: SummaryInput): string[] {
 
   // The caveat comes last and is never omitted — a summary built on weak data
   // that does not say so is worse than no summary.
-  if (input.trackingHealthScore < 85) {
+  if (input.trackingHealthScore !== null && input.trackingHealthScore < 85) {
     sentences.push(
       `Tracking health is ${input.trackingHealthScore}/100, so treat the channel figures above as indicative rather than exact.`,
     );

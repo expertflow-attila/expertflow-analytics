@@ -29,12 +29,12 @@ async function signInAction(formData: FormData) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; registered?: string }>;
 }) {
   const session = await auth();
   if (session?.user) redirect("/overview");
 
-  const { error } = await searchParams;
+  const { error, registered } = await searchParams;
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
@@ -47,6 +47,12 @@ export default async function LoginPage({
             Sign in to your workspace.
           </p>
         </div>
+
+        {registered ? (
+          <p className="mb-4 rounded-md bg-positive-subtle px-3 py-2 text-xs text-positive">
+            Account created. Sign in to set up your workspace.
+          </p>
+        ) : null}
 
         <form action={signInAction} className="space-y-4">
           <div className="space-y-1.5">

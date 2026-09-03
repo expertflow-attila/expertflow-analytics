@@ -66,9 +66,19 @@ export function DataQualityBadge({
   score,
   detail,
 }: {
-  score: number;
+  score: number | null;
   detail?: string;
 }) {
+  // A project with no events has no data quality to report. Showing a default
+  // score there would be exactly the false confidence this badge guards against.
+  if (score === null) {
+    return (
+      <Badge tone="neutral" title={detail}>
+        Data quality unavailable
+      </Badge>
+    );
+  }
+
   const tone = score >= 85 ? "positive" : score >= 60 ? "warning" : "negative";
 
   return (

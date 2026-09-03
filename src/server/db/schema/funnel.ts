@@ -9,6 +9,7 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 
+import { FUNNEL_NODE_KINDS } from "./funnel-kinds";
 import { id } from "./_helpers";
 import { organizations, projects } from "./tenancy";
 
@@ -50,19 +51,9 @@ export const funnels = pgTable(
   (t) => [index("funnels_project_idx").on(t.projectId)],
 );
 
-export const funnelNodeKindEnum = pgEnum("funnel_node_kind", [
-  "SOURCE",
-  "PAGE",
-  "EVENT",
-  "CONVERSION",
-  "EMAIL",
-  "WEBINAR",
-  "CALL",
-  "PURCHASE",
-  "UPSELL",
-  "SUBSCRIPTION",
-  "CUSTOM",
-]);
+// Sourced from the shared constant so the database enum and the union used by
+// client-safe modules cannot drift apart.
+export const funnelNodeKindEnum = pgEnum("funnel_node_kind", FUNNEL_NODE_KINDS);
 
 /**
  * `matchRule` is the contract between the visual builder and the calculation

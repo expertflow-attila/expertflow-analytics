@@ -29,6 +29,8 @@ export type AnomalyOptions = {
   minChangeFraction?: number;
   /** Below this many baseline points, detection is skipped entirely. */
   minBaselinePoints?: number;
+  /** Minimum same-weekday points before the seasonal baseline is used. */
+  minSeasonalPoints?: number;
   /** Compare each day against the same weekday when history allows. */
   seasonalityAware?: boolean;
 };
@@ -55,6 +57,7 @@ export function detectAnomalies(
     sigmaThreshold = 2.5,
     minChangeFraction = 0.15,
     minBaselinePoints = 7,
+    minSeasonalPoints = 3,
     seasonalityAware = true,
   } = options;
 
@@ -64,17 +67,25 @@ export function detectAnomalies(
   for (let i = 0; i < sorted.length; i++) {
     const point = sorted[i];
     const historyStart = Math.max(0, i - lookbackDays);
-    let baseline = sorted.slice(historyStart, i);
+    const history = sorted.slice(historyStart, i);
 
-    if (seasonalityAware && baseline.length >= 21) {
-      const sameWeekday = baseline.filter(
+    // The sufficiency check runs against the FULL history, before any
+    // narrowing. Applying it after the weekday filter would be self-defeating:
+    // a 28 day lookback holds at most four of any given weekday, so demanding
+    // seven would silently switch detection off for every series long enough
+    // to have seasonality in the first place.
+    if (history.length < minBaselinePoints) continue;
+
+    let baseline = history;
+
+    if (seasonalityAware && history.length >= 21) {
+      const sameWeekday = history.filter(
         (p) => weekdayOf(p.date) === weekdayOf(point.date),
       );
-      // Only switch to the weekday baseline when it is itself substantial.
-      if (sameWeekday.length >= 3) baseline = sameWeekday;
+      // A weekday baseline needs fewer points to be meaningful, but not so few
+      // that one outlier defines "normal".
+      if (sameWeekday.length >= minSeasonalPoints) baseline = sameWeekday;
     }
-
-    if (baseline.length < minBaselinePoints) continue;
 
     const { mean, stdDev } = meanAndStdDev(baseline.map((p) => p.value));
     if (mean === 0) continue;
@@ -144,9 +155,23 @@ export type TrackingHealthInput = {
 };
 
 export function calculateTrackingHealth(input: TrackingHealthInput): {
-  score: number;
+  /** Null when there is not enough data to judge. Never a default of 100. */
+  score: number | null;
+  unavailableReason: string | null;
   checks: HealthCheck[];
 } {
+  // Every check is a ratio, and every ratio over zero events is zero, which
+  // would make an empty project score a perfect 100. Reporting confidence in
+  // data that does not exist is the exact failure this score exists to catch.
+  if (input.totalEvents === 0) {
+    return {
+      score: null,
+      unavailableReason:
+        "No events have been received yet, so data quality cannot be assessed.",
+      checks: [],
+    };
+  }
+
   const safeRatio = (numerator: number, denominator: number) =>
     denominator === 0 ? 0 : numerator / denominator;
 
@@ -225,7 +250,11 @@ export function calculateTrackingHealth(input: TrackingHealthInput): {
     return sum;
   }, 0);
 
-  return { score: Math.max(0, Math.round(100 - penalty)), checks };
+  return {
+    score: Math.max(0, Math.round(100 - penalty)),
+    unavailableReason: null,
+    checks,
+  };
 }
 
 function buildCheck(spec: {
