@@ -1,7 +1,29 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { Sun, Moon } from "lucide-react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  ArrowDown,
+  ArrowRight,
+  ArrowUpRight,
+  BarChart3,
+  CalendarDays,
+  ChevronDown,
+  Clock3,
+  ExternalLink,
+  Eye,
+  GitBranch,
+  Globe2,
+  LayoutDashboard,
+  Monitor,
+  Moon,
+  MousePointer2,
+  Plug,
+  Smartphone,
+  Sun,
+  Tablet,
+  Users,
+  Zap,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import type {
   OverviewStats,
@@ -15,382 +37,44 @@ import type {
   EventData,
 } from "@/lib/posthog";
 
-// ============================================================
-// Hooks
-// ============================================================
-
-function useInView(threshold = 0.15) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [isVisible, setIsVisible] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => { if (entry.isIntersecting) setIsVisible(true); },
-      { threshold }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [threshold]);
-
-  return { ref, isVisible };
-}
-
-// ============================================================
-// AnimatedCounter (from Landing Design metrics-section pattern)
-// ============================================================
-
-function AnimatedCounter({ end, suffix = "", prefix = "" }: { end: number; suffix?: string; prefix?: string }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLDivElement>(null);
-  const [hasAnimated, setHasAnimated] = useState(false);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !hasAnimated) {
-          setHasAnimated(true);
-          const duration = 2000;
-          const startTime = performance.now();
-          const animate = (currentTime: number) => {
-            const elapsed = currentTime - startTime;
-            const progress = Math.min(elapsed / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            setCount(Math.floor(eased * end));
-            if (progress < 1) requestAnimationFrame(animate);
-          };
-          requestAnimationFrame(animate);
-        }
-      },
-      { threshold: 0.5 }
-    );
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [end, hasAnimated]);
-
-  return (
-    <div ref={ref} className="font-display tracking-tight">
-      {prefix}{count.toLocaleString("hu-HU")}{suffix}
-    </div>
-  );
-}
-
-// ============================================================
-// SVG Charts — all custom, no external chart lib
-// ============================================================
-
-function SparkLine({ data, className = "" }: { data: number[]; className?: string }) {
-  if (data.length < 2) return null;
-  const max = Math.max(...data);
-  const min = Math.min(...data);
-  const range = max - min || 1;
-  const w = 80;
-  const h = 24;
-  const points = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * w;
-    const y = h - ((v - min) / range) * h;
-    return `${x},${y}`;
-  }).join(" ");
-
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className={`${className}`} fill="none" preserveAspectRatio="none">
-      <polyline
-        points={points}
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        fill="none"
-      />
-    </svg>
-  );
-}
-
-function LineChart({ data, height = 200 }: { data: { date: string; pageviews: number; visitors: number }[]; height?: number }) {
-  if (data.length < 2) return null;
-  const maxPv = Math.max(...data.map(d => d.pageviews));
-  const w = 600;
-  const h = height;
-  const pad = { top: 10, right: 10, bottom: 30, left: 50 };
-  const cw = w - pad.left - pad.right;
-  const ch = h - pad.top - pad.bottom;
-
-  const pvPoints = data.map((d, i) => {
-    const x = pad.left + (i / (data.length - 1)) * cw;
-    const y = pad.top + ch - (d.pageviews / maxPv) * ch;
-    return `${x},${y}`;
-  });
-
-  const visPoints = data.map((d, i) => {
-    const x = pad.left + (i / (data.length - 1)) * cw;
-    const y = pad.top + ch - (d.visitors / maxPv) * ch;
-    return `${x},${y}`;
-  });
-
-  // Area fill
-  const areaPath = `M${pvPoints[0]} ${pvPoints.join(" L")} L${pad.left + cw},${pad.top + ch} L${pad.left},${pad.top + ch} Z`;
-
-  // Y-axis labels
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map(pct => ({
-    value: Math.round(maxPv * pct),
-    y: pad.top + ch - pct * ch,
-  }));
-
-  // X-axis labels (show every ~10th)
-  const xLabels = data.filter((_, i) => i % 10 === 0 || i === data.length - 1).map((d, _, arr) => {
-    const idx = data.indexOf(d);
-    return {
-      label: d.date.slice(5),
-      x: pad.left + (idx / (data.length - 1)) * cw,
-    };
-  });
-
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-auto" preserveAspectRatio="xMidYMid meet">
-      {/* Grid lines */}
-      {yTicks.map(t => (
-        <line key={t.value} x1={pad.left} y1={t.y} x2={pad.left + cw} y2={t.y}
-          stroke="currentColor" strokeOpacity={0.08} strokeWidth="1" />
-      ))}
-      {/* Y labels */}
-      {yTicks.map(t => (
-        <text key={`label-${t.value}`} x={pad.left - 8} y={t.y + 4}
-          textAnchor="end" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor" opacity={0.4}>
-          {t.value}
-        </text>
-      ))}
-      {/* X labels */}
-      {xLabels.map(l => (
-        <text key={l.label} x={l.x} y={h - 6}
-          textAnchor="middle" fontSize="10" fontFamily="var(--font-mono)" fill="currentColor" opacity={0.4}>
-          {l.label}
-        </text>
-      ))}
-      {/* Area fill */}
-      <path d={areaPath} fill="currentColor" opacity={0.05} />
-      {/* Visitor line */}
-      <polyline points={visPoints.join(" ")} fill="none" stroke="currentColor" strokeOpacity={0.25} strokeWidth="1.5" strokeLinejoin="round" />
-      {/* Pageview line */}
-      <polyline points={pvPoints.join(" ")} fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-function DonutChart({ data, size = 120 }: { data: { label: string; value: number }[]; size?: number }) {
-  const total = data.reduce((s, d) => s + d.value, 0);
-  if (total === 0) return null;
-  const r = size / 2 - 8;
-  const cx = size / 2;
-  const cy = size / 2;
-  let cumAngle = -Math.PI / 2;
-  const opacities = [1, 0.7, 0.5, 0.35, 0.2];
-
-  const arcs = data.map((d, i) => {
-    const angle = (d.value / total) * 2 * Math.PI;
-    const startX = cx + r * Math.cos(cumAngle);
-    const startY = cy + r * Math.sin(cumAngle);
-    cumAngle += angle;
-    const endX = cx + r * Math.cos(cumAngle);
-    const endY = cy + r * Math.sin(cumAngle);
-    const largeArc = angle > Math.PI ? 1 : 0;
-    const path = `M${cx},${cy} L${startX},${startY} A${r},${r} 0 ${largeArc},1 ${endX},${endY} Z`;
-    return (
-      <path key={d.label} d={path} fill="currentColor" opacity={opacities[i] ?? 0.15} />
-    );
-  });
-
-  return (
-    <div className="flex items-center gap-6">
-      <svg viewBox={`0 0 ${size} ${size}`} width={size} height={size} className="shrink-0">
-        {arcs}
-        <circle cx={cx} cy={cy} r={r * 0.55} className="fill-background" />
-      </svg>
-      <div className="space-y-1.5">
-        {data.map((d, i) => (
-          <div key={d.label} className="flex items-center gap-2 text-sm">
-            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: "currentColor", opacity: opacities[i] ?? 0.15 }} />
-            <span className="text-muted-foreground truncate">{d.label}</span>
-            <span className="font-mono text-xs ml-auto">{Math.round(d.value / total * 100)}%</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function HorizontalBar({ label, value, max, delay = 0 }: { label: string; value: number; max: number; delay?: number }) {
-  const { ref, isVisible } = useInView(0.1);
-  const pct = max > 0 ? (value / max) * 100 : 0;
-
-  return (
-    <div ref={ref} className="space-y-1.5">
-      <div className="flex justify-between items-baseline">
-        <span className="text-sm text-muted-foreground">{label}</span>
-        <span className="font-mono text-xs">{value.toLocaleString("hu-HU")}</span>
-      </div>
-      <div className="h-1.5 rounded-full bg-foreground/5 overflow-hidden">
-        <div
-          className="h-full rounded-full bg-foreground/80 transition-all duration-1000 ease-out"
-          style={{
-            width: isVisible ? `${pct}%` : "0%",
-            transitionDelay: `${delay}ms`,
-          }}
-        />
-      </div>
-    </div>
-  );
-}
-
-// ============================================================
-// Section Header — Landing Design pattern
-// ============================================================
-
-function SectionHeader({ num, title, subtitle }: { num: string; title: string; subtitle?: string }) {
-  const { ref, isVisible } = useInView();
-  return (
-    <div
-      ref={ref}
-      className={`mb-12 lg:mb-16 transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
-    >
-      <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-4">
-        <span className="w-8 h-px bg-foreground/30" />
-        {num}
-      </span>
-      <h2 className="text-3xl lg:text-5xl font-display tracking-tight">{title}</h2>
-      {subtitle && (
-        <p className="text-lg text-muted-foreground mt-2">{subtitle}</p>
-      )}
-    </div>
-  );
-}
-
-// ============================================================
-// Page Labels & Colors
-// ============================================================
-
-const PAGE_LABELS: Record<string, string> = {
+const number = (value: number) =>
+  value.toLocaleString("hu-HU", { useGrouping: true });
+const percent = (value: number) =>
+  `${value.toLocaleString("hu-HU", { maximumFractionDigits: 1 })}%`;
+const labels: Record<string, string> = {
   "businessnative.hu": "Főoldal",
   "businessnative.hu/tudastar": "Tudástár",
   "businessnative.hu/ai-diagnozis": "AI-diagnózis",
   "businessnative.hu/arak": "Árak",
 };
-
-const PAGE_SHORT: Record<string, string> = {
-  "businessnative.hu": "FŐOLDAL",
-  "businessnative.hu/tudastar": "TUDÁSTÁR",
-  "businessnative.hu/ai-diagnozis": "DIAGNÓZIS",
-  "businessnative.hu/arak": "ÁRAK",
+const navigation = [
+  { id: "attekintes", label: "Áttekintés", icon: LayoutDashboard },
+  { id: "forgalom", label: "Forgalom", icon: BarChart3 },
+  { id: "funnel", label: "Funnel", icon: GitBranch },
+  { id: "oldalak", label: "Oldalak", icon: Globe2 },
+  { id: "reszletek", label: "Közönség", icon: Users },
+  { id: "esemenyek", label: "Események", icon: MousePointer2 },
+  { id: "meroeszkozok", label: "Mérőeszközök", icon: Plug },
+];
+const funnel = [
+  { label: "Weboldal-látogatás", short: "Látogatás", value: 2400 },
+  { label: "AI-diagnózis kitöltve", short: "AI-diagnózis", value: 640 },
+  { label: "Email-kurzus feliratkozás", short: "Feliratkozás", value: 210 },
+  { label: "A 7. levélig eljutott", short: "Kurzus vége", value: 96 },
+  { label: "Konzultáció lefoglalva", short: "Konzultáció", value: 34 },
+];
+const eventLabels: Record<string, string> = {
+  cta_click: "CTA-kattintás",
+  section_view: "Szekció megtekintése",
+  pricing_view: "Árak megtekintése",
+  form_start: "Űrlap megkezdése",
+  form_submit: "Űrlap elküldése",
+  video_play: "Videó indítása",
+  scroll_75: "75%-os görgetés",
+  social_click: "Közösségi link",
+  faq_open: "GYIK megnyitása",
+  testimonial_view: "Vélemény megtekintése",
 };
-
-const PAGE_HOSTS = [
-  "businessnative.hu",
-  "businessnative.hu/tudastar",
-  "businessnative.hu/ai-diagnozis",
-  "businessnative.hu/arak",
-];
-
-const PAGE_FILTER_LABELS: Record<string, string> = {
-  all: "Összes",
-  "businessnative.hu": "FŐOLDAL",
-  "businessnative.hu/tudastar": "TUDÁSTÁR",
-  "businessnative.hu/ai-diagnozis": "DIAGNÓZIS",
-  "businessnative.hu/arak": "ÁRAK",
-};
-
-// A ténylegesen tervezett mérőeszközök — kitalált, illusztratív számokkal,
-// amíg a valódi API-hozzáférés nincs rendezve (ld. memory
-// project_bn_analitikai_rutin_dashboard_20260817). A PostHog és a YouTube
-// szándékosan NINCS itt (Attila, 2026-08-17): a PostHog mérése még nem
-// indult el, a YouTube-ot pedig egyelőre nem akarja ebben a nézetben — csak
-// a ténylegesen tervezett Google Analytics + Plausible pár marad.
-// MINTA-jelölés minden kártyán, hogy ne lehessen élő mérésnek nézni.
-const CHANNELS: { name: string; stats: { value: string; label: string }[]; desc: string }[] = [
-  {
-    name: "Google Analytics",
-    stats: [
-      { value: "1 890", label: "felhasználó / hónap" },
-      { value: "42%", label: "visszafordulási arány" },
-    ],
-    desc: "Honnan jönnek a látogatók, és melyik oldalon akadnak el.",
-  },
-  {
-    name: "Plausible",
-    stats: [
-      { value: "2 240", label: "egyedi látogató / hónap" },
-      { value: "1,8", label: "oldal / látogatás" },
-    ],
-    desc: "Gyors, süti nélküli alapszámok — második forrásként a GA mellett.",
-  },
-];
-
-// A tervezett teljes útvonal (Attila, 2026-08-17): forgalmat küld a kvízre,
-// onnan a most épülő 7-részes, videós email-kurzusra iratkoznak fel, a
-// sorozat végén konzultációt foglalnak. Az email-kurzus pár napon belül
-// élesedik — ez a szekció egy előnézet arról, hogyan látszana a
-// lemorzsolódás, KITALÁLT, csökkenő számokkal, nem élő konverziós adat.
-const FUNNEL_STEPS: { label: string; value: number; note?: string }[] = [
-  { label: "Weboldal-látogatás", value: 2400 },
-  { label: "AI-diagnózis kvíz kitöltve", value: 640 },
-  {
-    label: "Feliratkozás az email-kurzusra",
-    value: 210,
-    note: "7 rész, mindegyikben videós tananyag — hamarosan élesedik",
-  },
-  { label: "Eljut az utolsó (7.) levélig", value: 96 },
-  { label: "Konzultáció lefoglalva", value: 34 },
-];
-
-// ============================================================
-// Theme Toggle
-// ============================================================
-
-function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-  if (!mounted) return <div className="size-9" />;
-  return (
-    <button
-      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-      className="size-9 flex items-center justify-center rounded-md border border-foreground/10 hover:bg-accent transition-colors"
-      aria-label="Toggle theme"
-    >
-      {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
-    </button>
-  );
-}
-
-// ============================================================
-// Page Filter Tabs
-// ============================================================
-
-function PageFilterTabs({ selected, onChange }: { selected: string; onChange: (v: string) => void }) {
-  const options = ["all", ...PAGE_HOSTS];
-  return (
-    <div className="flex flex-wrap gap-2 mb-12">
-      {options.map(opt => (
-        <button
-          key={opt}
-          onClick={() => onChange(opt)}
-          className={`px-4 py-2 rounded-lg border text-sm font-mono transition-all duration-200 ${
-            selected === opt
-              ? "bg-foreground text-background border-foreground"
-              : "border-foreground/10 text-muted-foreground hover:border-foreground/30 hover:text-foreground"
-          }`}
-        >
-          {PAGE_FILTER_LABELS[opt]}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-// ============================================================
-// Dashboard
-// ============================================================
 
 interface DashboardProps {
   overview: OverviewStats;
@@ -408,6 +92,283 @@ interface DashboardProps {
   eventsByPage: Record<string, EventData[]>;
 }
 
+function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const dark = !mounted || resolvedTheme === "dark";
+  return (
+    <button
+      className="icon-button"
+      onClick={() => setTheme(dark ? "light" : "dark")}
+      aria-label={dark ? "Világos mód bekapcsolása" : "Sötét mód bekapcsolása"}
+    >
+      {dark ? <Sun size={17} /> : <Moon size={17} />}
+    </button>
+  );
+}
+
+function Sparkline({ values }: { values: number[] }) {
+  if (values.length < 2) return null;
+  const min = Math.min(...values),
+    range = Math.max(...values) - min || 1;
+  const points = values
+    .map(
+      (v, i) =>
+        `${(i / (values.length - 1)) * 110},${32 - ((v - min) / range) * 26}`,
+    )
+    .join(" ");
+  return (
+    <svg className="sparkline" viewBox="0 0 110 38" aria-hidden="true">
+      <polyline
+        points={points}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.7"
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function TrafficChart({
+  data,
+  metric,
+}: {
+  data: DailyData[];
+  metric: "pageviews" | "visitors";
+}) {
+  const id = useId().replace(/:/g, "");
+  const [hovered, setHovered] = useState<number | null>(null);
+  const container = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(760);
+  useEffect(() => {
+    const element = container.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setWidth(Math.max(240, Math.round(entry.contentRect.width)));
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  const labelInterval = Math.max(
+    1,
+    Math.ceil(data.length / (width < 500 ? 3 : 5)),
+  );
+  const height = 230,
+    left = 38,
+    right = 12,
+    top = 16,
+    bottom = 30;
+  const innerW = width - left - right,
+    innerH = height - top - bottom;
+  const max = Math.ceil(Math.max(...data.map((d) => d[metric]), 1) / 100) * 100;
+  const point = (d: DailyData, i: number) => ({
+    x: left + (i / Math.max(data.length - 1, 1)) * innerW,
+    y: top + innerH * (1 - d[metric] / max),
+  });
+  const points = data.map(point);
+  const path = points
+    .map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`)
+    .join(" ");
+  const selected = hovered === null ? null : data[hovered];
+  return (
+    <div className="traffic-chart" ref={container}>
+      <div className="chart-readout" aria-live="polite">
+        {selected
+          ? `${selected.date} · ${number(selected[metric])} ${metric === "pageviews" ? "megtekintés" : "látogató"}`
+          : "Napi bontás · a részletekhez mutass a grafikonra"}
+      </div>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        role="img"
+        aria-labelledby={`${id}-title`}
+        onMouseLeave={() => setHovered(null)}
+      >
+        <title
+          id={`${id}-title`}
+        >{`${metric === "pageviews" ? "Oldalmegtekintések" : "Látogatók"} napi alakulása, ${data.length} nap mintaadatai`}</title>
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="var(--plot)" stopOpacity=".24" />
+            <stop offset="100%" stopColor="var(--plot)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[0, 0.25, 0.5, 0.75, 1].map((ratio) => (
+          <g key={ratio}>
+            <line
+              x1={left}
+              x2={width - right}
+              y1={top + innerH * ratio}
+              y2={top + innerH * ratio}
+              className="chart-gridline"
+            />
+            <text
+              x={left - 10}
+              y={top + innerH * ratio + 4}
+              textAnchor="end"
+              className="chart-label"
+            >
+              {Math.round(max * (1 - ratio))}
+            </text>
+          </g>
+        ))}
+        {points.length > 0 && (
+          <>
+            <path
+              d={`${path} L${points[points.length - 1].x},${height - bottom} L${left},${height - bottom} Z`}
+              fill={`url(#${id})`}
+            />
+            <path
+              d={path}
+              fill="none"
+              stroke="var(--plot)"
+              strokeWidth="2.3"
+              strokeLinejoin="round"
+              strokeLinecap="round"
+            />
+          </>
+        )}
+        {data.map(
+          (d, i) =>
+            ((i % labelInterval === 0 && i < data.length - labelInterval / 2) ||
+              i === data.length - 1) && (
+              <text
+                key={d.date}
+                x={points[i].x}
+                y={height - 5}
+                textAnchor={
+                  i === 0 ? "start" : i === data.length - 1 ? "end" : "middle"
+                }
+                className="chart-label"
+              >
+                {d.date.slice(5).replace("-", ". ") + "."}
+              </text>
+            ),
+        )}
+        {selected && hovered !== null && (
+          <g>
+            <line
+              x1={points[hovered].x}
+              x2={points[hovered].x}
+              y1={top}
+              y2={height - bottom}
+              stroke="var(--plot)"
+              strokeDasharray="3 4"
+              opacity=".5"
+            />
+            <circle
+              cx={points[hovered].x}
+              cy={points[hovered].y}
+              r="4"
+              fill="var(--plot)"
+            />
+          </g>
+        )}
+        <rect
+          x={left}
+          y={top}
+          width={innerW}
+          height={innerH}
+          fill="transparent"
+          onMouseMove={(event) => {
+            const bounds =
+              event.currentTarget.ownerSVGElement!.getBoundingClientRect();
+            const x = ((event.clientX - bounds.left) / bounds.width) * width;
+            setHovered(
+              Math.max(
+                0,
+                Math.min(
+                  data.length - 1,
+                  Math.round(((x - left) / innerW) * (data.length - 1)),
+                ),
+              ),
+            );
+          }}
+        />
+      </svg>
+      <details className="chart-data">
+        <summary>Napi adatok táblázatban</summary>
+        <div className="table-scroll">
+          <table>
+            <caption>A grafikon napi mintaadatai</caption>
+            <thead>
+              <tr>
+                <th scope="col">Dátum</th>
+                <th scope="col">Megtekintések</th>
+                <th scope="col">Látogatók</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((d) => (
+                <tr key={d.date}>
+                  <td>{d.date}</td>
+                  <td>{number(d.pageviews)}</td>
+                  <td>{number(d.visitors)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function PanelHeading({
+  eyebrow,
+  title,
+  children,
+}: {
+  eyebrow?: string;
+  title: string;
+  children?: ReactNode;
+}) {
+  return (
+    <div className="panel-heading">
+      <div>
+        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+        <h2>{title}</h2>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function Bars({
+  rows,
+  suffix = "",
+}: {
+  rows: { label: string; value: number }[];
+  suffix?: string;
+}) {
+  const max = Math.max(...rows.map((row) => row.value), 1);
+  return (
+    <div className="bar-list">
+      {rows.map((row, i) => (
+        <div className="bar-item" key={row.label}>
+          <div className="bar-label">
+            <span>
+              <span className="row-number">
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              {row.label}
+            </span>
+            <span className="numeric">
+              {number(row.value)}
+              {suffix}
+            </span>
+          </div>
+          <div className="bar-track">
+            <div style={{ width: `${(row.value / max) * 100}%` }} />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function Dashboard({
   overview,
   pages,
@@ -423,465 +384,664 @@ export function Dashboard({
   browsersByPage,
   eventsByPage,
 }: DashboardProps) {
-  const [selectedPage, setSelectedPage] = useState<string>("all");
-
-  const dailyPvs = daily.map(d => d.pageviews);
-  const dailyVis = daily.map(d => d.visitors);
-  const maxPagePv = Math.max(...pages.map(p => p.pageviews), 1);
-
-  // Compute active data based on filter
-  const activeSources = selectedPage === "all" ? sources : (sourcesByPage[selectedPage] || sources);
-  const activeDevices = selectedPage === "all" ? devices : (devicesByPage[selectedPage] || devices);
-  const activeBrowsers = selectedPage === "all" ? browsers : (browsersByPage[selectedPage] || browsers);
-  const activeEvents = selectedPage === "all" ? events : (eventsByPage[selectedPage] || events);
-  const activeTopPages = selectedPage === "all" ? topPages : topPages.filter(p => p.host === selectedPage);
-
-  const maxSourceCount = Math.max(...activeSources.map(s => s.count), 1);
-  const maxCityCount = Math.max(...cities.map(c => c.count), 1);
-  const maxEventCount = Math.max(...activeEvents.map(e => e.count), 1);
-  const maxBrowserCount = Math.max(...activeBrowsers.map(b => b.count), 1);
-
-  const donutPages = pages.map(p => ({
-    label: PAGE_SHORT[p.page] || p.page,
-    value: p.pageviews,
-  }));
-
-  const donutDevices = activeDevices.map(d => ({
-    label: d.device,
-    value: d.count,
-  }));
-
-  const donutSources = activeSources.map(s => ({
-    label: s.source,
-    value: s.count,
-  }));
-
-  // Split daily into last-7 for sparklines
-  const last7Pv = dailyPvs.slice(-7);
-  const last7Vis = dailyVis.slice(-7);
-  const last7Sessions = daily.slice(-7).map(d => Math.round(d.pageviews * 0.54));
+  const [selectedPage, setSelectedPage] = useState("all");
+  const [metric, setMetric] = useState<"pageviews" | "visitors">("pageviews");
+  const [activeSection, setActiveSection] = useState("attekintes");
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (window.scrollY < 30) {
+          setActiveSection("attekintes");
+          return;
+        }
+        for (const entry of entries)
+          if (entry.isIntersecting) setActiveSection(entry.target.id);
+      },
+      { rootMargin: "-15% 0px -60% 0px" },
+    );
+    navigation.forEach(({ id }) => {
+      const element = document.getElementById(id);
+      if (element) observer.observe(element);
+    });
+    return () => observer.disconnect();
+  }, []);
+  const filtered = selectedPage !== "all";
+  const activeSources = filtered
+    ? (sourcesByPage[selectedPage] ?? [])
+    : sources;
+  const activeDevices = filtered
+    ? (devicesByPage[selectedPage] ?? [])
+    : devices;
+  const activeBrowsers = filtered
+    ? (browsersByPage[selectedPage] ?? [])
+    : browsers;
+  const activeEvents = filtered ? (eventsByPage[selectedPage] ?? []) : events;
+  const activeTopPages = filtered
+    ? topPages.filter((p) => p.host === selectedPage)
+    : topPages;
+  const scope = filtered
+    ? (labels[selectedPage] ?? selectedPage)
+    : "Összes oldal";
+  const dateRange = daily.length
+    ? `${daily[0].date.replaceAll("-", ". ")}. – ${daily[daily.length - 1].date.slice(5).replace("-", ". ")}.`
+    : "Nincs adat";
+  const sortedPages = [...pages].sort((a, b) => b.pageviews - a.pageviews);
+  const totalDevices = activeDevices.reduce((sum, d) => sum + d.count, 0);
+  const metrics = [
+    {
+      label: "Oldalmegtekintés",
+      value: number(overview.totalPageviews),
+      caption: `${daily.length} nap összesen`,
+      icon: Eye,
+      series: daily.slice(-14).map((d) => d.pageviews),
+    },
+    {
+      label: "Látogató",
+      value: number(overview.totalVisitors),
+      caption: "A mintaadatok alapján",
+      icon: Users,
+      series: daily.slice(-14).map((d) => d.visitors),
+    },
+    {
+      label: "Munkamenet",
+      value: number(overview.totalSessions),
+      caption: "Összesített mintaérték",
+      icon: MousePointer2,
+      series: daily.slice(-14).map((d) => Math.round(d.pageviews * 0.54)),
+    },
+    {
+      label: "Átlagos munkamenet",
+      value: `${Math.floor(overview.avgSessionDuration / 60)}:${String(overview.avgSessionDuration % 60).padStart(2, "0")}`,
+      caption: `${percent(overview.bounceRate)} visszafordulás`,
+      icon: Clock3,
+      series: [],
+    },
+  ];
+  const largestDrop = funnel
+    .slice(1)
+    .map((step, i) => ({
+      from: funnel[i].short,
+      to: step.short,
+      loss: 1 - step.value / funnel[i].value,
+    }))
+    .sort((a, b) => b.loss - a.loss)[0];
 
   return (
-    <div className="noise-overlay min-h-screen">
-      {/* =============== Navigation =============== */}
-      <nav className="sticky top-0 z-50 bg-background/80 backdrop-blur-xl border-b border-foreground/10">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-12 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <span className="font-display text-xl tracking-tight">business native</span>
-            <span className="font-mono text-xs text-muted-foreground mt-0.5">Analitikai rutin</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground">
-              <span className="w-2 h-2 rounded-full bg-accent pulse-soft" />
-              Utolsó 45 nap
-            </div>
-            <ThemeToggle />
-          </div>
-        </div>
-      </nav>
-
-      {/* =============== Hero =============== */}
-      <header className="border-b border-foreground/10">
-        <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-16 lg:py-24">
-          <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-6">
-            <span className="w-8 h-px bg-foreground/30" />
-            Dashboard · minta adatok
+    <div className="analytics-app">
+      <a className="skip-link" href="#attekintes">
+        Ugrás a tartalomra
+      </a>
+      <aside className="sidebar" aria-label="Oldalsáv">
+        <a
+          href="#attekintes"
+          className="brand"
+          aria-label="Business Native – áttekintés"
+        >
+          <span>
+            business native
+            <span className="brand-subtitle">ANALITIKAI RUTIN</span>
           </span>
-          <h1 className="text-5xl lg:text-7xl font-display tracking-tight">
-            Analitikai
-            <br />
-            <span className="text-muted-foreground">rutin.</span>
-          </h1>
-          <p className="text-lg text-muted-foreground mt-4 max-w-lg">
-            Így nézne ki, ha a businessnative.hu forgalmát egy helyen látnám —
-            ez a nézet illusztráció, kitalált adatokkal, nem élő mérés.
-          </p>
-        </div>
-      </header>
-
-      <main className="max-w-[1400px] mx-auto px-6 lg:px-12 relative z-10">
-
-        {/* =============== Section 00 — Csatornák =============== */}
-        <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="00" title="Csatornák" subtitle="Egy hely, ahonnan a tervezett mérőeszközök látszanak" />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-            {CHANNELS.map((c) => (
-              <div key={c.name} className="border border-foreground/10 rounded-lg p-6 relative">
-                <span className="absolute top-4 right-4 text-[10px] font-mono tracking-wider text-muted-foreground/60 border border-foreground/10 rounded px-1.5 py-0.5">
-                  MINTA
-                </span>
-                <p className="text-xs font-mono text-muted-foreground mb-4">{c.name}</p>
-                <div className="space-y-3">
-                  {c.stats.map((s) => (
-                    <div key={s.label}>
-                      <div className="text-2xl font-display tracking-tight">{s.value}</div>
-                      <p className="text-xs text-muted-foreground">{s.label}</p>
-                    </div>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground/80 mt-4 pt-4 border-t border-foreground/10">
-                  {c.desc}
-                </p>
-              </div>
-            ))}
+        </a>
+        <div className="workspace-card">
+          <span className="workspace-icon">
+            <Globe2 size={16} />
+          </span>
+          <div>
+            <strong>businessnative.hu</strong>
+            <span>Saját weboldal · demo</span>
           </div>
-        </section>
-
-        {/* =============== Section 01 — Teljes funnel elemzés =============== */}
-        <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <div className="flex items-start justify-between gap-4 mb-12 lg:mb-16">
-            <SectionHeader num="01" title="Teljes funnel elemzés" subtitle="Forgalomtól a lefoglalt konzultációig — a tervezett útvonal előnézete" />
-            <span className="shrink-0 mt-1 text-[10px] font-mono tracking-wider text-muted-foreground/60 border border-foreground/10 rounded px-1.5 py-0.5">
-              MINTA
+        </div>
+        <p className="nav-label">MUNKATERÜLET</p>
+        <nav className="side-nav" aria-label="Dashboard navigáció">
+          {navigation.map(({ id, label, icon: Icon }) => (
+            <a
+              key={id}
+              href={`#${id}`}
+              aria-label={label}
+              aria-current={activeSection === id ? "location" : undefined}
+              onClick={() => setActiveSection(id)}
+            >
+              <Icon size={17} />
+              <span>{label}</span>
+              {id === "funnel" && <span className="nav-count">05</span>}
+            </a>
+          ))}
+        </nav>
+        <div className="sidebar-bottom">
+          <div className="demo-card">
+            <span className="status-dot" />
+            <strong>Demo munkaterület</strong>
+            <p>Ismerd meg a számok mögötti történetet, mintaadatokkal.</p>
+          </div>
+          <a
+            href="https://businessnative.hu"
+            target="_blank"
+            rel="noreferrer"
+            className="website-link"
+          >
+            A Business Native oldala <ExternalLink size={14} />
+          </a>
+        </div>
+      </aside>
+      <div className="app-body">
+        <header className="topbar">
+          <a href="#attekintes" className="brand compact-brand">
+            <span>
+              business native
+              <span className="brand-subtitle">ANALITIKAI RUTIN</span>
+            </span>
+          </a>
+          <div className="breadcrumb">
+            Munkaterület <span>/</span> <strong>Analitika</strong>
+          </div>
+          <div className="topbar-actions">
+            <span className="sample-badge">
+              <span /> Mintaadatok
+            </span>
+            <ThemeToggle />
+            <span className="avatar" aria-label="Business Native munkaterület">
+              BN
             </span>
           </div>
+        </header>
+        <main className="dashboard-main">
+          <section id="attekintes" aria-labelledby="overview-title">
+            <div className="page-heading">
+              <div>
+                <p className="eyebrow">KEVESEBB TALÁLGATÁS. TÖBB RÁLÁTÁS.</p>
+                <h1 id="overview-title">
+                  Minden fontos szám.
+                  <br className="mobile-break" /> Egy helyen<span>.</span>
+                </h1>
+                <p className="page-description">
+                  Honnan érkeznek, merre mennek, hol akadnak el a látogatóid.
+                </p>
+              </div>
+              <div className="date-chip">
+                <CalendarDays size={15} />
+                <span>{dateRange}</span>
+              </div>
+            </div>
+            <div className="demo-notice">
+              <span className="status-dot" />
+              <span>
+                Ez egy <strong>mintaadatokkal feltöltött előnézet</strong>, nem
+                élő mérés.
+              </span>
+              <span className="notice-period">
+                {daily.length} nap · {pages.length} oldal
+              </span>
+            </div>
+            <div className="metric-grid">
+              {metrics.map(
+                ({ label, value, caption, icon: Icon, series }, index) => (
+                  <article
+                    className={`metric-card ${index === 0 ? "featured" : ""}`}
+                    key={label}
+                  >
+                    <div className="metric-label">
+                      {label}
+                      <Icon size={16} />
+                    </div>
+                    <div className="metric-value numeric">{value}</div>
+                    <div className="metric-bottom">
+                      <span>{caption}</span>
+                      {series.length > 0 && <Sparkline values={series} />}
+                    </div>
+                  </article>
+                ),
+              )}
+            </div>
+          </section>
 
-          <div className="max-w-2xl space-y-6">
-            {FUNNEL_STEPS.map((step, i) => {
-              const prev = FUNNEL_STEPS[i - 1];
-              const pct = prev ? Math.round((step.value / prev.value) * 100) : null;
-              return (
-                <div key={step.label}>
-                  <HorizontalBar label={step.label} value={step.value} max={FUNNEL_STEPS[0].value} delay={i * 80} />
-                  <div className="flex justify-between items-baseline mt-1">
-                    {step.note ? (
-                      <p className="text-xs text-muted-foreground/70">{step.note}</p>
-                    ) : <span />}
-                    {pct !== null && (
-                      <span className="font-mono text-xs text-muted-foreground/70">{pct}% az előző lépéshez képest</span>
+          <section
+            id="forgalom"
+            className="overview-grid"
+            aria-label="Forgalom áttekintése"
+          >
+            <article className="panel traffic-panel">
+              <PanelHeading
+                eyebrow="A FORGALOM RITMUSA"
+                title="Így alakult a látogatottság"
+              >
+                <span className="quiet-badge">Összes oldal</span>
+              </PanelHeading>
+              <div className="chart-toolbar">
+                <div className="segmented" aria-label="Grafikon mutatója">
+                  <button
+                    aria-pressed={metric === "pageviews"}
+                    onClick={() => setMetric("pageviews")}
+                  >
+                    Megtekintések
+                  </button>
+                  <button
+                    aria-pressed={metric === "visitors"}
+                    onClick={() => setMetric("visitors")}
+                  >
+                    Látogatók
+                  </button>
+                </div>
+                <span className="chart-total numeric">
+                  {number(daily.reduce((sum, d) => sum + d[metric], 0))}
+                  <span> / {daily.length} nap</span>
+                </span>
+              </div>
+              <TrafficChart data={daily} metric={metric} />
+            </article>
+            <article className="panel source-panel">
+              <PanelHeading
+                eyebrow="ELSŐ TALÁLKOZÁS"
+                title="Honnan érkeznek?"
+              />
+              <p className="panel-description">
+                Forgalmi források · összes oldal
+              </p>
+              <div className="source-list">
+                {sources.map((source, i) => (
+                  <div className="source-row" key={source.source}>
+                    <span className={`source-icon source-${i}`}>
+                      {source.source === "Direct" ? (
+                        <ArrowUpRight size={14} />
+                      ) : (
+                        source.source.slice(0, 1)
+                      )}
+                    </span>
+                    <div className="source-content">
+                      <div>
+                        <span>
+                          {source.source === "Direct"
+                            ? "Közvetlen"
+                            : source.source}
+                        </span>
+                        <strong className="numeric">
+                          {percent(source.percentage)}
+                        </strong>
+                      </div>
+                      <div className="bar-track">
+                        <div style={{ width: `${source.percentage}%` }} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="panel-footnote">
+                A minta forgalmi megoszlása <ArrowUpRight size={14} />
+              </div>
+            </article>
+          </section>
+
+          <section
+            id="funnel"
+            className="panel funnel-panel"
+            aria-label="Konverziós funnel"
+          >
+            <PanelHeading
+              eyebrow="LÁTOGATÓBÓL ÉRDEKLŐDŐ"
+              title="Az út a konzultációig"
+            >
+              <span className="quiet-badge">Önálló mintafolyamat</span>
+            </PanelHeading>
+            <div className="funnel-grid">
+              {funnel.map((step, i) => (
+                <div className="funnel-step" key={step.label}>
+                  <div className="funnel-step-top">
+                    <span className="step-number">0{i + 1}</span>
+                    {i > 0 && (
+                      <span className="step-conversion numeric">
+                        {percent((step.value / funnel[i - 1].value) * 100)}{" "}
+                        továbbjutott
+                      </span>
                     )}
                   </div>
+                  <div className="funnel-value numeric">
+                    {number(step.value)}
+                  </div>
+                  <div className="funnel-label">{step.label}</div>
+                  <div className="funnel-bar-space">
+                    <div
+                      className="funnel-column"
+                      style={{
+                        height: `${Math.max((step.value / funnel[0].value) * 100, 6)}%`,
+                      }}
+                    />
+                  </div>
+                  {i < funnel.length - 1 && (
+                    <ArrowRight className="funnel-arrow" size={15} />
+                  )}
                 </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* =============== Section 02 — Kampány teljesítmény =============== */}
-        <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="02" title="Kampány teljesítmény" subtitle="Egyedi landing oldalak összehasonlítása" />
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {pages.map((p) => {
-              const label = PAGE_LABELS[p.page] || p.page;
-              const tag = PAGE_SHORT[p.page] || "";
-              // Build a mini sparkline from the page's share of daily data
-              const sparkData = daily.slice(-14).map(d => Math.round(d.pageviews * (p.pageviews / overview.totalPageviews)));
-              return (
-                <div
-                  key={p.page}
-                  className={`border rounded-lg p-6 transition-all duration-200 cursor-pointer ${
-                    selectedPage === p.page
-                      ? "border-foreground bg-foreground/5"
-                      : "border-foreground/10 hover:border-foreground/30"
-                  }`}
-                  onClick={() => setSelectedPage(selectedPage === p.page ? "all" : p.page)}
-                >
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="font-mono text-xs text-muted-foreground px-2 py-0.5 border border-foreground/10 rounded-lg">{tag}</span>
-                    <SparkLine data={sparkData} className="w-16 h-5 text-foreground/40" />
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-1">{label}</p>
-                  <div className="flex items-baseline gap-3">
-                    <span className="font-mono text-2xl">{p.pageviews.toLocaleString("hu-HU")}</span>
-                    <span className="text-xs text-muted-foreground">megtekintés</span>
-                  </div>
-                  <div className="mt-1">
-                    <span className="font-mono text-sm text-muted-foreground">{p.visitors.toLocaleString("hu-HU")}</span>
-                    <span className="text-xs text-muted-foreground ml-1">látogató</span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* =============== Section 01 — Áttekintés =============== */}
-        <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="03" title="Áttekintés" subtitle="Összesített teljesítménymutatók" />
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-foreground/10">
-            {/* Oldalmegtekintés */}
-            <div className="bg-background p-8 lg:p-12">
-              <div className="text-5xl lg:text-7xl">
-                <AnimatedCounter end={overview.totalPageviews} />
-              </div>
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-lg text-muted-foreground">Oldalmegtekintés</span>
-                <SparkLine data={last7Pv} className="w-20 h-6 text-foreground/40" />
-              </div>
+              ))}
             </div>
-            {/* Egyedi látogató */}
-            <div className="bg-background p-8 lg:p-12">
-              <div className="text-5xl lg:text-7xl">
-                <AnimatedCounter end={overview.totalVisitors} />
-              </div>
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-lg text-muted-foreground">Egyedi látogató</span>
-                <SparkLine data={last7Vis} className="w-20 h-6 text-foreground/40" />
-              </div>
-            </div>
-            {/* Munkamenet */}
-            <div className="bg-background p-8 lg:p-12">
-              <div className="text-5xl lg:text-7xl">
-                <AnimatedCounter end={overview.totalSessions} />
-              </div>
-              <div className="mt-3 flex items-center justify-between">
-                <span className="text-lg text-muted-foreground">Munkamenet</span>
-                <SparkLine data={last7Sessions} className="w-20 h-6 text-foreground/40" />
-              </div>
-            </div>
-            {/* Aktív landing oldal */}
-            <div className="bg-background p-8 lg:p-12">
-              <div className="text-5xl lg:text-7xl">
-                <AnimatedCounter end={4} />
-              </div>
-              <div className="mt-3">
-                <span className="text-lg text-muted-foreground">Aktív landing oldal</span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* =============== Section 02 — Forgalom trend =============== */}
-        <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="04" title="Forgalom trend" subtitle="Napi oldalmegtekintések és látogatók" />
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Line chart */}
-            <div className="lg:col-span-2 border border-foreground/10 rounded-lg p-6 lg:p-8">
-              <div className="flex items-center justify-between mb-6">
-                <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider">
-                  Megtekintések / nap
-                </span>
-                <span className="font-mono text-xs text-muted-foreground">
-                  {daily[0]?.date} — {daily[daily.length - 1]?.date}
-                </span>
-              </div>
-              <LineChart data={daily} height={240} />
-              <div className="flex gap-6 mt-4">
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="w-4 h-0.5 bg-foreground rounded" /> Megtekintések
-                </span>
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="w-4 h-0.5 bg-foreground/25 rounded" /> Látogatók
-                </span>
-              </div>
-            </div>
-
-            {/* Page distribution donut */}
-            <div className="border border-foreground/10 rounded-lg p-6 lg:p-8">
-              <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
-                Oldal eloszlás
+            <div className="funnel-note">
+              <span className="insight-icon">
+                <Zap size={16} />
               </span>
-              <DonutChart data={donutPages} size={130} />
+              <p>
+                <strong>Itt érdemes közelebbről megnézni.</strong> A legnagyobb
+                lemorzsolódás a{" "}
+                <span>
+                  {largestDrop.from} → {largestDrop.to}
+                </span>{" "}
+                lépésnél látszik:{" "}
+                <strong>{percent(largestDrop.loss * 100)}</strong>. A fenti
+                értékek külön funnel-mintaadatok.
+              </p>
+              <span className="funnel-rate">
+                <strong className="numeric">
+                  {percent(
+                    (funnel[funnel.length - 1].value / funnel[0].value) * 100,
+                  )}
+                </strong>
+                <span>teljes konverzió</span>
+              </span>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* =============== Page Filter =============== */}
-        <div className="pt-24 lg:pt-32">
-          <PageFilterTabs selected={selectedPage} onChange={setSelectedPage} />
-        </div>
+          <section
+            id="oldalak"
+            className="panel"
+            aria-label="Oldalak teljesítménye"
+          >
+            <PanelHeading
+              eyebrow="MI KÖTI LE A FIGYELMET?"
+              title="Oldalaid egy pillantásra"
+            >
+              <span className="quiet-badge">{pages.length} oldal</span>
+            </PanelHeading>
+            <div className="table-scroll">
+              <table className="pages-table">
+                <caption>
+                  Oldalak összesített mintaadatai a teljes időszakban
+                </caption>
+                <thead>
+                  <tr>
+                    <th scope="col">Oldal</th>
+                    <th scope="col">
+                      Megtekintés <ArrowDown size={11} />
+                    </th>
+                    <th scope="col">Látogató</th>
+                    <th scope="col">Forgalmi arány</th>
+                    <th scope="col">Részletek</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {sortedPages.map((page, i) => (
+                    <tr
+                      key={page.page}
+                      className={
+                        selectedPage === page.page ? "selected-row" : ""
+                      }
+                    >
+                      <td>
+                        <div className="page-cell">
+                          <span className="page-index">0{i + 1}</span>
+                          <div>
+                            <strong>{labels[page.page] ?? page.page}</strong>
+                            <span>
+                              {page.page === "businessnative.hu"
+                                ? "/"
+                                : page.page.replace("businessnative.hu", "")}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="numeric">{number(page.pageviews)}</td>
+                      <td className="numeric muted">{number(page.visitors)}</td>
+                      <td>
+                        <div className="share-cell">
+                          <div className="bar-track">
+                            <div
+                              style={{
+                                width: `${(page.pageviews / Math.max(overview.totalPageviews, 1)) * 100}%`,
+                              }}
+                            />
+                          </div>
+                          <span className="numeric">
+                            {percent(
+                              (page.pageviews /
+                                Math.max(overview.totalPageviews, 1)) *
+                                100,
+                            )}
+                          </span>
+                        </div>
+                      </td>
+                      <td>
+                        <a
+                          className="icon-button row-action"
+                          href="#reszletek"
+                          aria-label={`${labels[page.page] ?? page.page} részletei`}
+                          onClick={() => setSelectedPage(page.page)}
+                        >
+                          <ArrowUpRight size={16} />
+                        </a>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
 
-        {/* =============== Section 03 — Landing oldalak =============== */}
-        <section className="pb-24 lg:pb-32 border-b border-foreground/10">
-          <SectionHeader num="05" title="Landing oldalak" subtitle="Teljesítmény összehasonlítás" />
-
-          <div>
-            {pages.map((p, index) => {
-              const label = PAGE_LABELS[p.page] || p.page;
-              const tag = PAGE_SHORT[p.page] || "";
-              const pct = (p.pageviews / maxPagePv) * 100;
-              const isHighlighted = selectedPage === p.page;
-              return (
-                <PageBarRow
-                  key={p.page}
-                  number={String(index + 1).padStart(2, "0")}
-                  label={label}
-                  tag={tag}
-                  pageviews={p.pageviews}
-                  visitors={p.visitors}
-                  percentage={pct}
-                  delay={index * 100}
-                  highlighted={isHighlighted}
+          <section
+            id="reszletek"
+            className="detail-section"
+            aria-labelledby="details-title"
+          >
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">EGY SZINTTEL MÉLYEBBEN</p>
+                <h2 id="details-title">Ismerd meg a közönséged</h2>
+              </div>
+              <div className="select-wrap">
+                <label htmlFor="page-filter">Részletek szűrése</label>
+                <div>
+                  <select
+                    id="page-filter"
+                    value={selectedPage}
+                    onChange={(event) => setSelectedPage(event.target.value)}
+                  >
+                    <option value="all">Összes oldal</option>
+                    {pages.map((page) => (
+                      <option key={page.page} value={page.page}>
+                        {labels[page.page] ?? page.page}
+                      </option>
+                    ))}
+                  </select>
+                  <ChevronDown size={14} />
+                </div>
+              </div>
+            </div>
+            <p className="scope-note" aria-live="polite">
+              {scope} · a szűrő az alábbi forrásokra, eszközökre, böngészőkre,
+              aloldalakra és eseményekre vonatkozik.
+            </p>
+            <div className="three-grid">
+              <article className="panel">
+                <PanelHeading title="Forgalmi források" />
+                <Bars
+                  rows={activeSources.map((s) => ({
+                    label: s.source,
+                    value: s.count,
+                  }))}
                 />
-              );
-            })}
-          </div>
-        </section>
-
-        {/* =============== Section 04 — Forgalom részletei =============== */}
-        <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="06" title="Forgalom részletei" subtitle="Források, eszközök, böngészők" />
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Sources donut */}
-            <div className="border border-foreground/10 rounded-lg p-6 lg:p-8">
-              <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
-                Forgalmi források
-              </span>
-              <DonutChart data={donutSources} size={130} />
+              </article>
+              <article className="panel">
+                <PanelHeading title="Eszközök" />
+                <div
+                  className="device-distribution"
+                  role="img"
+                  aria-label={activeDevices
+                    .map(
+                      (d) =>
+                        `${d.device}: ${percent(totalDevices ? (d.count / totalDevices) * 100 : 0)}`,
+                    )
+                    .join(", ")}
+                >
+                  {activeDevices.map((device, i) => (
+                    <div
+                      key={device.device}
+                      className={`device-segment device-${i}`}
+                      style={{
+                        width: `${totalDevices ? (device.count / totalDevices) * 100 : 0}%`,
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="device-list">
+                  {activeDevices.map((device, i) => {
+                    const Icon =
+                      device.device === "Mobile"
+                        ? Smartphone
+                        : device.device === "Tablet"
+                          ? Tablet
+                          : Monitor;
+                    return (
+                      <div key={device.device}>
+                        <span className={`device-icon device-${i}`}>
+                          <Icon size={16} />
+                        </span>
+                        <span>
+                          {device.device === "Desktop"
+                            ? "Asztali gép"
+                            : device.device === "Mobile"
+                              ? "Mobil"
+                              : "Tablet"}
+                        </span>
+                        <strong className="numeric">
+                          {percent(
+                            totalDevices
+                              ? (device.count / totalDevices) * 100
+                              : 0,
+                          )}
+                        </strong>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="panel-description device-caption">
+                  Az oldalmegtekintések megoszlása.
+                </p>
+              </article>
+              <article className="panel">
+                <PanelHeading title="Böngészők" />
+                <Bars
+                  rows={activeBrowsers.map((b) => ({
+                    label: b.browser,
+                    value: b.count,
+                  }))}
+                />
+              </article>
             </div>
-
-            {/* Devices donut */}
-            <div className="border border-foreground/10 rounded-lg p-6 lg:p-8">
-              <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
-                Eszközök
-              </span>
-              <DonutChart data={donutDevices} size={130} />
+            <div className="two-grid">
+              <article className="panel">
+                <PanelHeading title="Városok">
+                  <span className="quiet-badge">Mindig összes oldal</span>
+                </PanelHeading>
+                <Bars
+                  rows={cities.map((c) => ({ label: c.city, value: c.count }))}
+                />
+              </article>
+              <article className="panel">
+                <PanelHeading title="Népszerű aloldalak">
+                  <span className="quiet-badge">{scope}</span>
+                </PanelHeading>
+                <div className="subpage-list">
+                  {activeTopPages.length ? (
+                    activeTopPages.map((page, i) => (
+                      <div key={`${page.host}${page.path}`}>
+                        <span className="row-number">
+                          {String(i + 1).padStart(2, "0")}
+                        </span>
+                        <div>
+                          <strong>{labels[page.host] ?? page.host}</strong>
+                          <span>{page.path}</span>
+                        </div>
+                        <span className="numeric">
+                          {number(page.pageviews)}
+                          <small>{number(page.visitors)} látogató</small>
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <p className="empty-state">
+                      Ehhez az oldalhoz nincs aloldaladat.
+                    </p>
+                  )}
+                </div>
+              </article>
             </div>
+          </section>
 
-            {/* Browsers bar chart */}
-            <div className="border border-foreground/10 rounded-lg p-6 lg:p-8">
-              <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
-                Böngészők
-              </span>
-              <div className="space-y-4">
-                {activeBrowsers.map((b, i) => (
-                  <HorizontalBar key={b.browser} label={b.browser} value={b.count} max={maxBrowserCount} delay={i * 80} />
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* =============== Section 05 — Részletes bontás =============== */}
-        <section className="py-24 lg:py-32 border-b border-foreground/10">
-          <SectionHeader num="07" title="Részletes bontás" subtitle="Városok és legnépszerűbb oldalak" />
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Top cities */}
-            <div className="border border-foreground/10 rounded-lg p-6 lg:p-8">
-              <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
-                Top városok
-              </span>
-              <div className="space-y-4">
-                {cities.map((c, i) => (
-                  <HorizontalBar key={c.city} label={c.city} value={c.count} max={maxCityCount} delay={i * 60} />
-                ))}
-              </div>
-            </div>
-
-            {/* Top pages table */}
-            <div className="border border-foreground/10 rounded-lg p-6 lg:p-8">
-              <span className="font-mono text-xs text-muted-foreground uppercase tracking-wider block mb-6">
-                Top oldalak
-              </span>
-              <div className="space-y-0">
-                {activeTopPages.map((p, i) => (
-                  <div key={`${p.host}${p.path}`}
-                    className="flex items-center gap-4 py-3 border-b border-foreground/5 last:border-0">
-                    <span className="font-mono text-xs text-muted-foreground w-6">{String(i + 1).padStart(2, "0")}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm truncate">{PAGE_LABELS[p.host] || p.host}</p>
-                      <p className="text-xs text-muted-foreground truncate font-mono">{p.path}</p>
+          <section id="esemenyek" className="panel" aria-label="Események">
+            <PanelHeading
+              eyebrow="A KATTINTÁS MÖGÖTT"
+              title="Mit csinálnak a látogatók?"
+            >
+              <span className="quiet-badge">{scope}</span>
+            </PanelHeading>
+            {activeEvents.length ? (
+              <div className="events-grid">
+                {activeEvents.map((event) => (
+                  <div className="event-row" key={event.event}>
+                    <MousePointer2 size={15} />
+                    <div>
+                      <strong>{eventLabels[event.event] ?? event.event}</strong>
+                      <span>{event.event}</span>
                     </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-mono text-sm">{p.pageviews.toLocaleString("hu-HU")}</p>
-                      <p className="text-xs text-muted-foreground">{p.visitors.toLocaleString("hu-HU")} lat.</p>
-                    </div>
+                    <span className="numeric">{number(event.count)}</span>
                   </div>
                 ))}
               </div>
+            ) : (
+              <p className="empty-state">
+                Ehhez az oldalhoz még nincs eseményadat.
+              </p>
+            )}
+          </section>
+
+          <section
+            id="meroeszkozok"
+            className="integrations-section"
+            aria-labelledby="integrations-title"
+          >
+            <div className="section-heading">
+              <div>
+                <p className="eyebrow">AZ ADATOK HELYE</p>
+                <h2 id="integrations-title">Tervezett mérőeszközök</h2>
+              </div>
+              <span className="quiet-badge">Még nincsenek összekötve</span>
             </div>
-          </div>
-        </section>
-
-        {/* =============== Section 06 — Egyedi események =============== */}
-        {activeEvents.length > 0 && (
-          <section className="py-24 lg:py-32 border-b border-foreground/10">
-            <SectionHeader num="08" title="Egyedi események" subtitle="CTA kattintások és interakciók" />
-
-            <div className="space-y-4">
-              {activeEvents.map((e, i) => (
-                <HorizontalBar key={e.event} label={e.event} value={e.count} max={maxEventCount} delay={i * 60} />
+            <div className="two-grid">
+              {[
+                {
+                  name: "Google Analytics",
+                  letter: "G",
+                  description: "Részletes forgalmi és viselkedési adatok.",
+                },
+                {
+                  name: "Plausible",
+                  letter: "P",
+                  description: "Gyors áttekintés, süti nélküli méréssel.",
+                },
+              ].map((tool) => (
+                <article className="integration-card" key={tool.name}>
+                  <span className="integration-icon">{tool.letter}</span>
+                  <div>
+                    <h3>{tool.name}</h3>
+                    <p>{tool.description}</p>
+                  </div>
+                  <span className="quiet-badge">Tervezett</span>
+                </article>
               ))}
             </div>
           </section>
-        )}
-
-        {/* =============== Footer =============== */}
-        <footer className="py-16 text-center">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <span className="font-display text-lg tracking-tight">business native</span>
-          </div>
-          <p className="font-mono text-xs text-muted-foreground">
-            Analitikai rutin — 2026
-          </p>
-        </footer>
-      </main>
-    </div>
-  );
-}
-
-// ============================================================
-// Page bar row — Landing Design feature card pattern (numbered)
-// ============================================================
-
-function PageBarRow({
-  number,
-  label,
-  tag,
-  pageviews,
-  visitors,
-  percentage,
-  delay,
-  highlighted = false,
-}: {
-  number: string;
-  label: string;
-  tag: string;
-  pageviews: number;
-  visitors: number;
-  percentage: number;
-  delay: number;
-  highlighted?: boolean;
-}) {
-  const { ref, isVisible } = useInView(0.2);
-
-  return (
-    <div
-      ref={ref}
-      className={`flex flex-col lg:flex-row gap-4 lg:gap-8 py-8 lg:py-12 border-b border-foreground/10 transition-all duration-700 ${
-        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-      } ${highlighted ? "bg-foreground/5 px-6 -mx-6 rounded-lg" : ""}`}
-      style={{ transitionDelay: `${delay}ms` }}
-    >
-      {/* Number */}
-      <div className="shrink-0 w-12">
-        <span className="font-mono text-sm text-muted-foreground">{number}</span>
-      </div>
-
-      {/* Content */}
-      <div className="flex-1">
-        <div className="flex items-baseline gap-3 mb-4">
-          <h3 className="text-2xl lg:text-3xl font-display">{label}</h3>
-          <span className="font-mono text-xs text-muted-foreground px-2 py-0.5 border border-foreground/10 rounded-lg">{tag}</span>
-        </div>
-
-        {/* Bar */}
-        <div className="h-2 rounded-full bg-foreground/5 overflow-hidden mb-4">
-          <div
-            className="h-full rounded-full bg-foreground transition-all duration-1000 ease-out"
-            style={{
-              width: isVisible ? `${percentage}%` : "0%",
-              transitionDelay: `${delay + 200}ms`,
-            }}
-          />
-        </div>
-
-        <div className="flex gap-8">
-          <div>
-            <span className="font-mono text-2xl">{pageviews.toLocaleString("hu-HU")}</span>
-            <span className="text-sm text-muted-foreground ml-2">megtekintés</span>
-          </div>
-          <div>
-            <span className="font-mono text-2xl">{visitors.toLocaleString("hu-HU")}</span>
-            <span className="text-sm text-muted-foreground ml-2">látogató</span>
-          </div>
-        </div>
+          <footer className="dashboard-footer">
+            <span>
+              business native<span className="brand-dot">.</span>
+            </span>
+            <span>Analitikai rutin · illusztratív adatok</span>
+            <a href="#attekintes">Vissza az áttekintéshez ↑</a>
+          </footer>
+        </main>
       </div>
     </div>
   );
