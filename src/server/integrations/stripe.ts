@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import {
@@ -122,7 +121,6 @@ export const stripeProvider: IntegrationProvider = {
     switch (event.type) {
       case "checkout.session.completed": {
         const gross = amountOf(object, "amount_total", "amount_subtotal");
-        // A session that was not actually paid is not revenue.
         if (asString(object.payment_status) !== "paid" || gross <= 0) {
           return {
             externalEventId: event.id,
@@ -198,7 +196,6 @@ export const stripeProvider: IntegrationProvider = {
           | undefined;
         const price = items?.data?.[0]?.price;
 
-        // Normalise to a monthly figure so MRR is a plain sum.
         const unit = asNumber(price?.unit_amount) ?? 0;
         const interval = price?.recurring?.interval ?? "month";
         const mrr =
@@ -219,7 +216,6 @@ export const stripeProvider: IntegrationProvider = {
                 : status === "past_due"
                   ? "PAST_DUE"
                   : "ACTIVE",
-          // A cancelled subscription contributes nothing to MRR.
           mrrMinor:
             event.type === "customer.subscription.deleted" || status === "canceled"
               ? 0
@@ -241,7 +237,6 @@ export const stripeProvider: IntegrationProvider = {
 
       case "invoice.payment_succeeded": {
         const gross = amountOf(object, "amount_paid");
-        // The first invoice of a subscription duplicates the checkout session.
         if (gross <= 0 || asString(object.billing_reason) === "subscription_create") {
           return {
             externalEventId: event.id,
@@ -272,38 +267,3 @@ export const stripeProvider: IntegrationProvider = {
     }
   },
 };
-=======
-import crypto from "crypto";
-
-const TOLERANCE_SECONDS = 300;
-
-export function verifyStripeSignature(
-  payload: string,
-  signatureHeader: string,
-  secret: string,
-  now = Math.floor(Date.now() / 1000)
-): boolean {
-  const parts = signatureHeader.split(",").reduce((acc, part) => {
-    const [k, v] = part.split("=");
-    if (k && v) acc[k] = v;
-    return acc;
-  }, {} as Record<string, string>);
-
-  const timestamp = parseInt(parts.t || "0", 10);
-  if (Math.abs(now - timestamp) > TOLERANCE_SECONDS) return false;
-
-  const signed = `${timestamp}.${payload}`;
-  const expected = crypto.createHmac("sha256", secret).update(signed).digest("hex");
-  const provided = parts.v1 || "";
-
-  try {
-    return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
-  } catch {
-    return false;
-  }
-}
-
-export function parseStripeEvent(payload: string) {
-  return JSON.parse(payload);
-}
->>>>>>> origin/main
