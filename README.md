@@ -58,3 +58,7 @@ funnel.track("lead_created", { leadMagnet: "AI Systems Guide" })
 The repository is a modular Next.js application. Calculation logic is deterministic and covered by golden tests. A production deployment still requires auth, tenant-scoped storage, migrations, queue workers and webhook verification before event ingestion is enabled. The UI communicates this boundary instead of pretending the seed data is live.
 
 See `docs/architecture.md`, `docs/analytics.md`, `docs/attribution.md` and `docs/privacy.md`.
+
+## CSV import / export
+
+Demo data can be exported as CSV from the Revenue page (Export report button). The utility in `src/lib/csv.ts` supports round-trip parsing and is covered by tests. Production import will land on the event ingestion endpoint once a real EventStore is configured.
