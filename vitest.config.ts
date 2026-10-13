@@ -1,0 +1,20 @@
+import { resolve } from "node:path";
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: {
+    environment: "node",
+    globals: false,
+    include: ["src/**/*.test.ts", "tests/**/*.test.ts"],
+    // Loaded before any test module, so modules that read validated env at
+    // import time see the real values. Without this, import hoisting stands the
+    // database singleton up against a placeholder connection string.
+    setupFiles: ["dotenv/config"],
+    // Integration tests hit a real Postgres and must not run concurrently
+    // against the same schema.
+    fileParallelism: false,
+  },
+  resolve: {
+    alias: { "@": resolve(__dirname, "./src") },
+  },
+});
