@@ -3,6 +3,7 @@
 /* ---------------------------------------------------------------------------
    Funnel Intelligence OS — design tokens
    Aligned with Business Native: dark editorial canvas, cream type, lavender accent.
+   Dark is the default. Light is available via data-theme="light".
    --------------------------------------------------------------------------- */
 
 @theme {
@@ -16,7 +17,7 @@
 }
 
 :root {
-  /* Business Native palette */
+  /* Business Native dark editorial (default) */
   --background: #0a0a0b;
   --surface: #121214;
   --surface-muted: #18181b;
@@ -45,58 +46,26 @@
   --series-6: #d4b8a8;
 }
 
-/* Light theme fallback (rarely used) */
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme="dark"]) {
-    --background: #f6f3ec;
-    --surface: #ffffff;
-    --surface-muted: #f0ede6;
-    --foreground: #0a0a0b;
-    --muted-foreground: rgba(10, 10, 11, 0.65);
-    --subtle-foreground: rgba(10, 10, 11, 0.45);
-    --border: rgba(10, 10, 11, 0.1);
-    --border-strong: rgba(10, 10, 11, 0.18);
+:root[data-theme="light"] {
+  --background: #f6f3ec;
+  --surface: #ffffff;
+  --surface-muted: #f0ede6;
+  --foreground: #0a0a0b;
+  --muted-foreground: rgba(10, 10, 11, 0.65);
+  --subtle-foreground: rgba(10, 10, 11, 0.45);
+  --border: rgba(10, 10, 11, 0.1);
+  --border-strong: rgba(10, 10, 11, 0.18);
 
-    --accent: #6b6b9a;
-    --accent-foreground: #f6f3ec;
-    --accent-subtle: rgba(107, 107, 154, 0.1);
+  --accent: #6b6b9a;
+  --accent-foreground: #f6f3ec;
+  --accent-subtle: rgba(107, 107, 154, 0.1);
 
-    --positive: #2d8a5e;
-    --positive-subtle: rgba(45, 138, 94, 0.1);
-    --negative: #c44545;
-    --negative-subtle: rgba(196, 69, 69, 0.1);
-    --warning: #b8860b;
-    --warning-subtle: rgba(184, 134, 11, 0.1);
-  }
-}
-
-:root[data-theme="dark"] {
-  --background: #0a0a0b;
-  --surface: #121214;
-  --surface-muted: #18181b;
-  --foreground: #f6f3ec;
-  --muted-foreground: rgba(246, 243, 236, 0.72);
-  --subtle-foreground: rgba(246, 243, 236, 0.52);
-  --border: rgba(246, 243, 236, 0.12);
-  --border-strong: rgba(246, 243, 236, 0.2);
-
-  --accent: #c0c0e7;
-  --accent-foreground: #0a0a0b;
-  --accent-subtle: rgba(192, 192, 231, 0.12);
-
-  --positive: #7dcea0;
-  --positive-subtle: rgba(125, 206, 160, 0.12);
-  --negative: #e07a7a;
-  --negative-subtle: rgba(224, 122, 122, 0.12);
-  --warning: #e0c07a;
-  --warning-subtle: rgba(224, 192, 122, 0.12);
-
-  --series-1: #c0c0e7;
-  --series-2: #a8c5b8;
-  --series-3: #e0c07a;
-  --series-4: #c0a8d4;
-  --series-5: #8fb8d4;
-  --series-6: #d4b8a8;
+  --positive: #2d8a5e;
+  --positive-subtle: rgba(45, 138, 94, 0.1);
+  --negative: #c44545;
+  --negative-subtle: rgba(196, 69, 69, 0.1);
+  --warning: #b8860b;
+  --warning-subtle: rgba(184, 134, 11, 0.1);
 }
 
 @theme inline {
