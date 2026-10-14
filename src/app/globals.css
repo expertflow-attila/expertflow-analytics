@@ -2,114 +2,101 @@
 
 /* ---------------------------------------------------------------------------
    Funnel Intelligence OS — design tokens
-
-   Calm, data-dense, editorial. No gradients, no glassmorphism, no decorative
-   motion. Colour is reserved for meaning: positive/negative deltas, severity,
-   and series identity in charts.
+   Aligned with Business Native: dark editorial canvas, cream type, lavender accent.
    --------------------------------------------------------------------------- */
 
 @theme {
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
-  --font-mono:
-    ui-monospace, "SF Mono", Menlo, Monaco, "Cascadia Mono", monospace;
+  --font-sans: "Geist Variable", "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, Monaco, "Cascadia Mono", monospace;
 
-  /* Numeric UI wants a tighter rhythm than Tailwind's default. */
   --text-2xs: 0.6875rem;
   --text-2xs--line-height: 1rem;
 
-  --radius-card: 0.625rem;
+  --radius-card: 0.5rem;
 }
 
 :root {
-  --background: oklch(0.99 0.002 250);
-  --surface: oklch(1 0 0);
-  --surface-muted: oklch(0.975 0.003 250);
-  --foreground: oklch(0.21 0.015 260);
-  --muted-foreground: oklch(0.52 0.012 260);
-  --subtle-foreground: oklch(0.63 0.01 260);
-  --border: oklch(0.918 0.006 260);
-  --border-strong: oklch(0.86 0.008 260);
+  /* Business Native palette */
+  --background: #0a0a0b;
+  --surface: #121214;
+  --surface-muted: #18181b;
+  --foreground: #f6f3ec;
+  --muted-foreground: rgba(246, 243, 236, 0.72);
+  --subtle-foreground: rgba(246, 243, 236, 0.52);
+  --border: rgba(246, 243, 236, 0.12);
+  --border-strong: rgba(246, 243, 236, 0.2);
 
-  --accent: oklch(0.53 0.15 258);
-  --accent-foreground: oklch(0.99 0 0);
-  --accent-subtle: oklch(0.955 0.02 258);
+  --accent: #c0c0e7;
+  --accent-foreground: #0a0a0b;
+  --accent-subtle: rgba(192, 192, 231, 0.12);
 
-  --positive: oklch(0.55 0.13 155);
-  --positive-subtle: oklch(0.955 0.03 155);
-  --negative: oklch(0.55 0.18 25);
-  --negative-subtle: oklch(0.96 0.025 25);
-  --warning: oklch(0.62 0.13 75);
-  --warning-subtle: oklch(0.96 0.04 85);
+  --positive: #7dcea0;
+  --positive-subtle: rgba(125, 206, 160, 0.12);
+  --negative: #e07a7a;
+  --negative-subtle: rgba(224, 122, 122, 0.12);
+  --warning: #e0c07a;
+  --warning-subtle: rgba(224, 192, 122, 0.12);
 
-  /* Categorical series palette — distinguishable, equal visual weight. */
-  --series-1: oklch(0.55 0.14 258);
-  --series-2: oklch(0.62 0.13 175);
-  --series-3: oklch(0.65 0.14 60);
-  --series-4: oklch(0.58 0.16 340);
-  --series-5: oklch(0.6 0.12 130);
-  --series-6: oklch(0.55 0.11 300);
+  --series-1: #c0c0e7;
+  --series-2: #a8c5b8;
+  --series-3: #e0c07a;
+  --series-4: #c0a8d4;
+  --series-5: #8fb8d4;
+  --series-6: #d4b8a8;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --background: oklch(0.16 0.008 260);
-    --surface: oklch(0.194 0.009 260);
-    --surface-muted: oklch(0.225 0.01 260);
-    --foreground: oklch(0.95 0.004 260);
-    --muted-foreground: oklch(0.7 0.012 260);
-    --subtle-foreground: oklch(0.58 0.012 260);
-    --border: oklch(0.28 0.012 260);
-    --border-strong: oklch(0.36 0.014 260);
+/* Light theme fallback (rarely used) */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --background: #f6f3ec;
+    --surface: #ffffff;
+    --surface-muted: #f0ede6;
+    --foreground: #0a0a0b;
+    --muted-foreground: rgba(10, 10, 11, 0.65);
+    --subtle-foreground: rgba(10, 10, 11, 0.45);
+    --border: rgba(10, 10, 11, 0.1);
+    --border-strong: rgba(10, 10, 11, 0.18);
 
-    --accent: oklch(0.68 0.14 258);
-    --accent-foreground: oklch(0.16 0.008 260);
-    --accent-subtle: oklch(0.27 0.04 258);
+    --accent: #6b6b9a;
+    --accent-foreground: #f6f3ec;
+    --accent-subtle: rgba(107, 107, 154, 0.1);
 
-    --positive: oklch(0.72 0.14 155);
-    --positive-subtle: oklch(0.26 0.05 155);
-    --negative: oklch(0.68 0.17 25);
-    --negative-subtle: oklch(0.27 0.06 25);
-    --warning: oklch(0.76 0.13 80);
-    --warning-subtle: oklch(0.28 0.05 80);
-
-    --series-1: oklch(0.7 0.14 258);
-    --series-2: oklch(0.74 0.13 175);
-    --series-3: oklch(0.78 0.13 70);
-    --series-4: oklch(0.7 0.15 340);
-    --series-5: oklch(0.74 0.12 135);
-    --series-6: oklch(0.7 0.12 300);
+    --positive: #2d8a5e;
+    --positive-subtle: rgba(45, 138, 94, 0.1);
+    --negative: #c44545;
+    --negative-subtle: rgba(196, 69, 69, 0.1);
+    --warning: #b8860b;
+    --warning-subtle: rgba(184, 134, 11, 0.1);
   }
 }
 
 :root[data-theme="dark"] {
-  --background: oklch(0.16 0.008 260);
-  --surface: oklch(0.194 0.009 260);
-  --surface-muted: oklch(0.225 0.01 260);
-  --foreground: oklch(0.95 0.004 260);
-  --muted-foreground: oklch(0.7 0.012 260);
-  --subtle-foreground: oklch(0.58 0.012 260);
-  --border: oklch(0.28 0.012 260);
-  --border-strong: oklch(0.36 0.014 260);
+  --background: #0a0a0b;
+  --surface: #121214;
+  --surface-muted: #18181b;
+  --foreground: #f6f3ec;
+  --muted-foreground: rgba(246, 243, 236, 0.72);
+  --subtle-foreground: rgba(246, 243, 236, 0.52);
+  --border: rgba(246, 243, 236, 0.12);
+  --border-strong: rgba(246, 243, 236, 0.2);
 
-  --accent: oklch(0.68 0.14 258);
-  --accent-foreground: oklch(0.16 0.008 260);
-  --accent-subtle: oklch(0.27 0.04 258);
+  --accent: #c0c0e7;
+  --accent-foreground: #0a0a0b;
+  --accent-subtle: rgba(192, 192, 231, 0.12);
 
-  --positive: oklch(0.72 0.14 155);
-  --positive-subtle: oklch(0.26 0.05 155);
-  --negative: oklch(0.68 0.17 25);
-  --negative-subtle: oklch(0.27 0.06 25);
-  --warning: oklch(0.76 0.13 80);
-  --warning-subtle: oklch(0.28 0.05 80);
+  --positive: #7dcea0;
+  --positive-subtle: rgba(125, 206, 160, 0.12);
+  --negative: #e07a7a;
+  --negative-subtle: rgba(224, 122, 122, 0.12);
+  --warning: #e0c07a;
+  --warning-subtle: rgba(224, 192, 122, 0.12);
 
-  --series-1: oklch(0.7 0.14 258);
-  --series-2: oklch(0.74 0.13 175);
-  --series-3: oklch(0.78 0.13 70);
-  --series-4: oklch(0.7 0.15 340);
-  --series-5: oklch(0.74 0.12 135);
-  --series-6: oklch(0.7 0.12 300);
+  --series-1: #c0c0e7;
+  --series-2: #a8c5b8;
+  --series-3: #e0c07a;
+  --series-4: #c0a8d4;
+  --series-5: #8fb8d4;
+  --series-6: #d4b8a8;
 }
 
 @theme inline {
@@ -150,7 +137,6 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  /* Metrics must never reflow as digits change. */
   .tabular {
     font-variant-numeric: tabular-nums;
   }
