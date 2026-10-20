@@ -1,9 +1,13 @@
+import { displayLabel } from "@/lib/labels";
 import { eq } from "drizzle-orm";
 
 import { DemoDataBanner, PageBody, PageHeader } from "@/components/page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, EmptyState } from "@/components/ui/primitives";
-import { rankOpportunities, type ImprovementScenario } from "@/lib/analytics/opportunity-core";
+import {
+  rankOpportunities,
+  type ImprovementScenario,
+} from "@/lib/analytics/opportunity-core";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
 import {
   isDemoDataset,
@@ -14,13 +18,16 @@ import { loadFunnel, rangeDays } from "@/server/analytics/queries";
 import { db } from "@/server/db";
 import { funnels } from "@/server/db/schema";
 
-export const metadata = { title: "Opportunities" };
+export const metadata = { title: "Lehetőségek" };
 export const dynamic = "force-dynamic";
 
-const SCENARIOS: Record<string, { label: string; scenario: ImprovementScenario }> = {
-  target: { label: "To target", scenario: { kind: "TARGET" } },
+const SCENARIOS: Record<
+  string,
+  { label: string; scenario: ImprovementScenario }
+> = {
+  target: { label: "Célig", scenario: { kind: "TARGET" } },
   point: {
-    label: "+1 percentage point",
+    label: "+1 százalékpont",
     scenario: { kind: "ABSOLUTE_POINTS", points: 0.01 },
   },
   relative: {
@@ -70,8 +77,8 @@ export default async function OpportunitiesPage({
   return (
     <>
       <PageHeader
-        title="Opportunities"
-        description="Ranked by estimated revenue impact, weighted by how much of it the data actually supports. Every figure is an estimate from observed behaviour, not a forecast."
+        title="Lehetőségek"
+        description="Becsült bevételi hatás szerint rendezve, az adatok megbízhatóságával súlyozva. Az értékek megfigyelt viselkedésből származó becslések, nem előrejelzések."
         actions={
           <div className="flex gap-1">
             {Object.entries(SCENARIOS).map(([key, value]) => (
@@ -96,8 +103,8 @@ export default async function OpportunitiesPage({
 
         {opportunities.length === 0 ? (
           <EmptyState
-            title="No opportunity can be estimated yet"
-            description="An opportunity needs a funnel step with a conversion target, enough people passing through it, and revenue observed downstream. Set targets on your funnel steps to unlock this."
+            title="Még nem becsülhető bevételi lehetőség"
+            description="A becsléshez konverziós cél, elegendő belépő és a későbbi lépésekben megfigyelt bevétel szükséges. Először állíts be célértékeket a tölcsér lépéseinél."
           />
         ) : (
           <ul className="space-y-3">
@@ -115,13 +122,14 @@ export default async function OpportunitiesPage({
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {formatPercent(opportunity.currentConversionRate)} →{" "}
-                          {formatPercent(opportunity.targetConversionRate)} across{" "}
-                          {formatNumber(opportunity.eligibleUsers)} people, worth{" "}
+                          {formatPercent(opportunity.targetConversionRate)}{" "}
+                          érintett: {formatNumber(opportunity.eligibleUsers)}{" "}
+                          fő, értékük:{" "}
                           {formatCurrency(
                             opportunity.downstreamRevenuePerConversionMinor,
                             ctx.baseCurrency,
                           )}{" "}
-                          each downstream.
+                          fejenként a későbbi lépésekben.
                         </p>
                       </div>
 
@@ -134,7 +142,7 @@ export default async function OpportunitiesPage({
                           )}
                         </p>
                         <p className="text-2xs text-muted-foreground">
-                          estimated monthly upside
+                          becsült havi többletbevétel
                         </p>
                       </div>
                     </div>
@@ -149,7 +157,7 @@ export default async function OpportunitiesPage({
                               : "neutral"
                         }
                       >
-                        {opportunity.confidence} confidence
+                        {displayLabel(opportunity.confidence)} megbízhatóság
                       </Badge>
                       <span className="text-2xs text-muted-foreground">
                         {opportunity.confidenceReason}
@@ -160,11 +168,20 @@ export default async function OpportunitiesPage({
                         can interrogate is a ranking nobody should act on. */}
                     <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1.5 border-t border-border pt-3 sm:grid-cols-5">
                       {[
-                        { label: "Score", value: opportunity.opportunityScore },
-                        { label: "Revenue impact", value: opportunity.revenueImpactScore },
-                        { label: "Reach", value: opportunity.reachScore },
-                        { label: "Persistence", value: opportunity.persistenceScore },
-                        { label: "Effort", value: opportunity.effortScore },
+                        {
+                          label: "Pontszám",
+                          value: opportunity.opportunityScore,
+                        },
+                        {
+                          label: "Bevételi hatás",
+                          value: opportunity.revenueImpactScore,
+                        },
+                        { label: "Elérés", value: opportunity.reachScore },
+                        {
+                          label: "Tartósság",
+                          value: opportunity.persistenceScore,
+                        },
+                        { label: "Ráfordítás", value: opportunity.effortScore },
                       ].map((component) => (
                         <div key={component.label}>
                           <dt className="text-2xs text-muted-foreground">
@@ -189,21 +206,19 @@ export default async function OpportunitiesPage({
 
         <Card>
           <CardHeader>
-            <CardTitle>How these numbers are produced</CardTitle>
+            <CardTitle>Hogyan számoljuk ezeket az értékeket?</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2 text-xs leading-relaxed text-muted-foreground">
             <p>
-              Additional conversions are the people currently entering the step
-              multiplied by the improvement in its conversion rate. Additional
-              revenue is those conversions multiplied by the revenue actually
-              observed downstream of that step during the period, normalised to
-              30 days.
+              A további konverziók becslése a belépők számának és a konverziós
+              arány javulásának szorzata. A többletbevétel ezt szorozza a
+              későbbi lépésekben ténylegesen megfigyelt, konverziónkénti
+              bevétellel, 30 napra vetítve.
             </p>
             <p>
-              Confidence comes from sample size and whether downstream revenue
-              exists at all. It is not a statistical confidence interval, and no
-              claim is made that the improvement is achievable — only what it
-              would be worth if it happened.
+              A megbízhatóságot a minta mérete és a megfigyelt bevétel határozza
+              meg. Ez nem statisztikai konfidenciaintervallum. A becslés a
+              javulás értékét mutatja, nem azt ígéri, hogy a javulás elérhető.
             </p>
           </CardContent>
         </Card>

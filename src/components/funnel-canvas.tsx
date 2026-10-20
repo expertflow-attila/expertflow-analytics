@@ -1,4 +1,5 @@
 "use client";
+import { displayLabel } from "@/lib/labels";
 
 import {
   Background,
@@ -16,7 +17,13 @@ import { useMemo, useState } from "react";
 import "@xyflow/react/dist/style.css";
 
 import type { EdgeMetrics, NodeMetrics } from "@/lib/analytics/funnel-core";
-import { cn, formatCurrency, formatDuration, formatNumber, formatPercent } from "@/lib/utils";
+import {
+  cn,
+  formatCurrency,
+  formatDuration,
+  formatNumber,
+  formatPercent,
+} from "@/lib/utils";
 
 export type CanvasNode = NodeMetrics & {
   kind: string;
@@ -55,19 +62,23 @@ function FunnelNodeCard({ data }: NodeProps) {
         metrics.isBiggestLeak && !selected && "border-negative/50",
       )}
     >
-      <Handle type="target" position={Position.Left} className="!bg-border-strong" />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!bg-border-strong"
+      />
 
       <p className="truncate text-xs font-medium">{metrics.name}</p>
 
       <p className="tabular mt-2 text-lg font-semibold tracking-tight">
         {formatNumber(metrics.entered)}
         <span className="ml-1 text-2xs font-normal text-muted-foreground">
-          entered
+          belépő
         </span>
       </p>
 
       {metrics.conversionRate === null ? (
-        <p className="mt-1 text-2xs text-muted-foreground">final step</p>
+        <p className="mt-1 text-2xs text-muted-foreground">utolsó lépés</p>
       ) : (
         <div className="mt-1 flex items-baseline gap-1.5">
           <span className="tabular text-sm font-medium">
@@ -83,7 +94,11 @@ function FunnelNodeCard({ data }: NodeProps) {
               )}
             >
               {metrics.varianceToTargetPoints > 0 ? "+" : ""}
-              {(metrics.varianceToTargetPoints * 100).toFixed(1)} pp
+              {(metrics.varianceToTargetPoints * 100).toLocaleString("hu-HU", {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+              })}{" "}
+              százalékpont
             </span>
           )}
         </div>
@@ -94,18 +109,22 @@ function FunnelNodeCard({ data }: NodeProps) {
           {formatCurrency(metrics.downstreamRevenueMinor, currency, {
             compact: true,
           })}{" "}
-          downstream
+          későbbi bevétel
         </p>
       ) : null}
 
       {metrics.isBiggestLeak ? (
         <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-negative-subtle px-1.5 py-0.5 text-2xs font-medium text-negative">
           <AlertTriangle className="size-3" aria-hidden />
-          Revenue leak
+          Bevételkiesés
         </p>
       ) : null}
 
-      <Handle type="source" position={Position.Right} className="!bg-border-strong" />
+      <Handle
+        type="source"
+        position={Position.Right}
+        className="!bg-border-strong"
+      />
     </button>
   );
 }
@@ -177,6 +196,12 @@ export function FunnelCanvas({
     <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
       <div className="h-[560px] overflow-hidden rounded-[var(--radius-card)] border border-border bg-surface-muted">
         <ReactFlow
+          ariaLabelConfig={{
+            "controls.zoomIn.ariaLabel": "Nagyítás",
+            "controls.zoomOut.ariaLabel": "Kicsinyítés",
+            "controls.fitView.ariaLabel": "Nézet igazítása",
+            "minimap.ariaLabel": "Tölcsér áttekintése",
+          }}
           nodes={flowNodes}
           edges={flowEdges}
           nodeTypes={nodeTypes}
@@ -211,29 +236,29 @@ function NodeDetailPanel({
     return (
       <aside className="rounded-[var(--radius-card)] border border-border bg-surface p-4">
         <p className="text-xs text-muted-foreground">
-          Select a step to see its detail.
+          Válassz egy lépést a részletekhez.
         </p>
       </aside>
     );
   }
 
   const rows: Array<{ label: string; value: string }> = [
-    { label: "Entered", value: formatNumber(node.entered) },
-    { label: "Converted", value: formatNumber(node.converted) },
-    { label: "Conversion", value: formatPercent(node.conversionRate) },
-    { label: "Drop-off", value: formatNumber(node.dropoff) },
+    { label: "Belépők", value: formatNumber(node.entered) },
+    { label: "Továbblépők", value: formatNumber(node.converted) },
+    { label: "Konverzió", value: formatPercent(node.conversionRate) },
+    { label: "Lemorzsolódás", value: formatNumber(node.dropoff) },
     {
-      label: "Median time to convert",
+      label: "Továbblépés medián ideje",
       value: formatDuration(node.medianTimeToConvertSeconds),
     },
     {
-      label: "Downstream revenue",
+      label: "Későbbi lépések bevétele",
       value: formatCurrency(node.downstreamRevenueMinor, currency, {
         compact: true,
       }),
     },
     {
-      label: "Revenue per entered",
+      label: "Bevétel belépőnként",
       value: formatCurrency(node.revenuePerEnteredMinor, currency),
     },
   ];
@@ -243,7 +268,7 @@ function NodeDetailPanel({
       <div>
         <p className="text-sm font-semibold tracking-tight">{node.name}</p>
         <p className="mt-0.5 text-2xs text-muted-foreground">
-          Step {node.stepIndex + 1} · {node.kind.toLowerCase()}
+          Lépés {node.stepIndex + 1} · {displayLabel(node.kind)}
         </p>
       </div>
 
@@ -262,10 +287,10 @@ function NodeDetailPanel({
       {node.targetConversionRate !== null ? (
         <div className="rounded-md bg-surface-muted px-3 py-2.5">
           <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
-            Plan vs reality
+            Terv és tény
           </p>
           <p className="tabular mt-1 text-xs">
-            Target {formatPercent(node.targetConversionRate)} · actual{" "}
+            Cél {formatPercent(node.targetConversionRate)} · tényleges{" "}
             {formatPercent(node.conversionRate)}
           </p>
           {node.varianceToTargetPoints !== null ? (
@@ -278,7 +303,11 @@ function NodeDetailPanel({
               )}
             >
               {node.varianceToTargetPoints > 0 ? "+" : ""}
-              {(node.varianceToTargetPoints * 100).toFixed(1)} percentage points
+              {(node.varianceToTargetPoints * 100).toLocaleString("hu-HU", {
+                minimumFractionDigits: 1,
+                maximumFractionDigits: 1,
+              })}{" "}
+              százalékpont
             </p>
           ) : null}
         </div>

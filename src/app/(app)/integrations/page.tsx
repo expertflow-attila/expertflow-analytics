@@ -1,3 +1,5 @@
+import { formatDate } from "@/lib/utils";
+import { displayLabel } from "@/lib/labels";
 import { eq } from "drizzle-orm";
 
 import { PageBody, PageHeader } from "@/components/page";
@@ -15,7 +17,7 @@ import { resolveProjectContext } from "@/server/analytics/context";
 import { db } from "@/server/db";
 import { apiKeys, integrations } from "@/server/db/schema";
 
-export const metadata = { title: "Integrations" };
+export const metadata = { title: "Integrációk" };
 export const dynamic = "force-dynamic";
 
 export default async function IntegrationsPage() {
@@ -54,29 +56,29 @@ export default async function IntegrationsPage() {
   return (
     <>
       <PageHeader
-        title="Integrations"
-        description="How data gets in. The browser SDK covers behaviour; a server-side source is what makes revenue trustworthy."
+        title="Integrációk"
+        description="Adatforrások és kapcsolatok. A böngészős mérőkód a viselkedést, a szerveroldali forrás a hiteles bevételi adatokat biztosítja."
       />
 
       <PageBody>
         {ctx.role === "OWNER" || ctx.role === "ADMIN" ? (
           <Card>
             <CardHeader>
-              <CardTitle>Create API key</CardTitle>
+              <CardTitle>API-kulcs létrehozása</CardTitle>
             </CardHeader>
             <CardContent>
-              <ConfigForm action={createKey} submitLabel="Create key">
+              <ConfigForm action={createKey} submitLabel="Kulcs létrehozása">
                 <input type="hidden" name="projectId" value={ctx.projectId} />
-                <Label htmlFor="keyName">Key name</Label>
+                <Label htmlFor="keyName">Kulcs neve</Label>
                 <Input id="keyName" name="name" required maxLength={100} />
-                <Label htmlFor="keyType">Key type</Label>
+                <Label htmlFor="keyType">Kulcs típusa</Label>
                 <select
                   id="keyType"
                   name="type"
                   className="block rounded-md border bg-surface p-2"
                 >
-                  <option value="SECRET">Server secret</option>
-                  <option value="PUBLISHABLE">Browser publishable</option>
+                  <option value="SECRET">Titkos szerverkulcs</option>
+                  <option value="PUBLISHABLE">Nyilvános böngészőkulcs</option>
                 </select>
               </ConfigForm>
             </CardContent>
@@ -88,14 +90,14 @@ export default async function IntegrationsPage() {
                 <CardHeader>
                   <CardTitle>
                     {provider === "stripe"
-                      ? "Configure Stripe"
-                      : "Configure generic webhook"}
+                      ? "Stripe beállítása"
+                      : "Általános webhook beállítása"}
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <ConfigForm
                     action={saveIntegration}
-                    submitLabel={`Save ${provider}`}
+                    submitLabel={`${provider === "stripe" ? "Stripe" : "Webhook"} mentése`}
                   >
                     <input
                       type="hidden"
@@ -103,25 +105,27 @@ export default async function IntegrationsPage() {
                       value={ctx.projectId}
                     />
                     <input type="hidden" name="provider" value={provider} />
-                    <Label htmlFor={`${provider}Secret`}>Signing secret</Label>
+                    <Label htmlFor={`${provider}Secret`}>Aláírási titok</Label>
                     <Input
                       id={`${provider}Secret`}
                       name="secret"
                       type="password"
                       autoComplete="new-password"
-                      placeholder="Leave blank to retain the saved secret"
+                      placeholder="Hagyd üresen a mentett titok megtartásához"
                     />
                     {provider === "webhook" ? (
                       <>
                         <Label htmlFor="signatureHeader">
-                          Signature header
+                          Aláírás fejlécének neve
                         </Label>
                         <Input
                           id="signatureHeader"
                           name="signatureHeader"
-                          placeholder="x-signature (leave blank to retain saved header)"
+                          placeholder="x-signature (üresen hagyva a mentett fejléc marad)"
                         />
-                        <Label htmlFor="mapping">JSON field mapping</Label>
+                        <Label htmlFor="mapping">
+                          JSON-mezők megfeleltetése
+                        </Label>
                         <textarea
                           id="mapping"
                           name="mapping"
@@ -131,7 +135,7 @@ export default async function IntegrationsPage() {
                           }
                         />
                         <p className="text-xs text-muted-foreground">
-                          Leave the mapping blank to keep the saved mapping.
+                          Üresen hagyva megmarad a mentett mezőmegfeleltetés.
                         </p>
                       </>
                     ) : null}
@@ -143,15 +147,19 @@ export default async function IntegrationsPage() {
                     <div className="mt-4">
                       <ConfigForm
                         action={saveIntegration}
-                        submitLabel={`Disconnect ${provider}`}
-                        confirmation="Stop accepting deliveries from this integration?"
+                        submitLabel={`${provider === "stripe" ? "Stripe" : "Webhook"} leválasztása`}
+                        confirmation="Leállítod az ebből az integrációból érkező adatok fogadását?"
                       >
                         <input
                           type="hidden"
                           name="projectId"
                           value={ctx.projectId}
                         />
-                        <input type="hidden" name="provider" value={provider} />
+                        <input
+                          type="hidden"
+                          name="provider"
+                          value={provider}
+                        />
                         <input
                           type="hidden"
                           name="operation"
@@ -166,19 +174,20 @@ export default async function IntegrationsPage() {
           : null}
         <Card>
           <CardHeader>
-            <CardTitle>Install the tracking script</CardTitle>
+            <CardTitle>Mérőkód telepítése</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Add this to every page, ideally in the head. It sends a page view
-              automatically, handles sessions, persists UTM parameters and
-              retries failed sends.
+              Illeszd be minden oldalba, lehetőleg a head szakaszba.
+              Automatikusan rögzíti az oldalmegtekintést, kezeli a
+              munkameneteket és az UTM-paramétereket, a sikertelen küldést pedig
+              újrapróbálja.
             </p>
             <pre className="overflow-x-auto rounded-md bg-surface-muted px-3 py-2.5 font-mono text-2xs leading-relaxed">
               {snippet}
             </pre>
 
-            <p className="pt-2 text-xs font-medium">Then, in your own code:</p>
+            <p className="pt-2 text-xs font-medium">Ezután a saját kódodban:</p>
             <pre className="overflow-x-auto rounded-md bg-surface-muted px-3 py-2.5 font-mono text-2xs leading-relaxed">
               {`funnel.identify({ email: "buyer@example.com" })
 funnel.track("lead_created", { leadMagnet: "AI Guide" })
@@ -188,22 +197,23 @@ funnel.track("purchase_completed", {}, {
             </pre>
 
             <p className="text-2xs leading-relaxed text-subtle-foreground">
-              Call identify as early as you know who someone is. Everything they
-              did anonymously beforehand is then joined onto their journey,
-              which is what makes first-touch attribution possible.
+              Hívd meg az identify függvényt, amint ismert a látogató
+              személyazonossága. A korábbi anonim aktivitás így kapcsolódik az
+              ügyfélútjához, és lehetővé válik az első érintés szerinti
+              attribúció.
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Server-side events</CardTitle>
+            <CardTitle>Szerveroldali események</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
             <p className="text-xs leading-relaxed text-muted-foreground">
-              Send revenue from your backend rather than the browser. A purchase
-              recorded server-side cannot be lost to an ad blocker, a closed tab
-              or a failed redirect.
+              A bevételi eseményeket a háttérrendszerből küldd. Így a böngésző
+              bezárása, egy hirdetésblokkoló vagy hibás átirányítás nem szakítja
+              meg a rögzítést.
             </p>
             <pre className="overflow-x-auto rounded-md bg-surface-muted px-3 py-2.5 font-mono text-2xs leading-relaxed">
               {serverExample}
@@ -213,32 +223,33 @@ funnel.track("purchase_completed", {}, {
 
         <Card>
           <CardHeader>
-            <CardTitle>Webhooks</CardTitle>
+            <CardTitle>Webhookok</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
               <p className="text-xs font-medium">Stripe</p>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                Add this as a webhook endpoint in your Stripe dashboard, then
-                store the signing secret on the integration. When Stripe is
-                connected its records become the canonical source of revenue and
-                browser purchase events are reconciled against them.
+                Add meg ezt a végpontot a Stripe kezelőfelületén, majd mentsd az
+                aláírási titkot az integrációhoz. A csatlakoztatott Stripe
+                adatai adják a bevétel hiteles forrását; a böngészős
+                vásárlásokat ezekkel egyeztetjük.
               </p>
               <pre className="overflow-x-auto rounded-md bg-surface-muted px-3 py-2.5 font-mono text-2xs">
                 {`${appUrl}/api/webhooks/stripe?project=${ctx.projectId}`}
               </pre>
               <p className="text-2xs text-subtle-foreground">
-                Handled events: checkout.session.completed,
+                Kezelt események: checkout.session.completed,
                 payment_intent.succeeded, charge.refunded,
                 invoice.payment_succeeded, customer.subscription.*
               </p>
             </div>
 
             <div className="space-y-2 border-t border-border pt-4">
-              <p className="text-xs font-medium">Generic webhook</p>
+              <p className="text-xs font-medium">Általános webhook</p>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                For any other tool. Configure a signing secret and a field
-                mapping, and the payload is translated into an event.
+                Más rendszerek csatlakoztatásához. Az aláírási titok és a
+                mezőmegfeleltetés alapján a beérkező adatokat eseménnyé
+                alakítjuk.
               </p>
               <pre className="overflow-x-auto rounded-md bg-surface-muted px-3 py-2.5 font-mono text-2xs">
                 {`${appUrl}/api/webhooks/webhook?project=${ctx.projectId}`}
@@ -256,10 +267,9 @@ funnel.track("purchase_completed", {}, {
 }`}
               </pre>
               <p className="text-2xs leading-relaxed text-subtle-foreground">
-                A value starting with <code className="font-mono">=</code> is a
-                literal; anything else is a dot-path into the payload. Requests
-                without a valid signature are rejected — an unauthenticated
-                endpoint that writes revenue is an open door.
+                Az ezzel kezdődő érték: <code className="font-mono">=</code>{" "}
+                rögzített szöveg; minden más pontozott mezőútvonal a beküldött
+                adatokban. Az érvényes aláírás nélküli kéréseket elutasítjuk.
               </p>
             </div>
           </CardContent>
@@ -267,17 +277,17 @@ funnel.track("purchase_completed", {}, {
 
         <Card>
           <CardHeader>
-            <CardTitle>API keys</CardTitle>
+            <CardTitle>API-kulcsok</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <thead>
                 <tr>
-                  <Th>Name</Th>
-                  <Th>Type</Th>
-                  <Th>Key</Th>
-                  <Th>Last used</Th>
-                  <Th>Status / action</Th>
+                  <Th>Név</Th>
+                  <Th>Típus</Th>
+                  <Th>Kulcs</Th>
+                  <Th>Utolsó használat</Th>
+                  <Th>Állapot / művelet</Th>
                 </tr>
               </thead>
               <tbody>
@@ -288,7 +298,7 @@ funnel.track("purchase_completed", {}, {
                       <Badge
                         tone={key.type === "SECRET" ? "warning" : "neutral"}
                       >
-                        {key.type.toLowerCase()}
+                        {displayLabel(key.type)}
                       </Badge>
                     </Td>
                     <Td className="font-mono text-2xs">
@@ -298,17 +308,17 @@ funnel.track("purchase_completed", {}, {
                     </Td>
                     <Td className="text-2xs text-muted-foreground">
                       {key.lastUsedAt
-                        ? key.lastUsedAt.toISOString().slice(0, 10)
-                        : "never"}
+                        ? formatDate(key.lastUsedAt, ctx.timezone)
+                        : "még nem használták"}
                     </Td>
                     <Td>
                       {key.revokedAt ? (
-                        "Revoked"
+                        "Visszavonva"
                       ) : ctx.role === "OWNER" || ctx.role === "ADMIN" ? (
                         <ConfigForm
                           action={revokeKey}
-                          submitLabel="Revoke"
-                          confirmation="Revoke this key? Senders using it will stop working."
+                          submitLabel="Visszavonás"
+                          confirmation="Visszavonod ezt a kulcsot? Az ezt használó adatküldés leáll."
                         >
                           <input
                             type="hidden"
@@ -318,7 +328,7 @@ funnel.track("purchase_completed", {}, {
                           <input type="hidden" name="keyId" value={key.id} />
                         </ConfigForm>
                       ) : (
-                        "Active"
+                        "Aktív"
                       )}
                     </Td>
                   </tr>
@@ -327,31 +337,32 @@ funnel.track("purchase_completed", {}, {
             </Table>
 
             <p className="mt-3 text-2xs leading-relaxed text-subtle-foreground">
-              The publishable key is safe in a browser — it can only write
-              events. Secret keys are stored hashed and shown once at creation;
-              if one is lost it must be replaced rather than recovered.
+              A nyilvános kulcs csak eseményeket küldhet, ezért böngészőben is
+              használható. A titkos kulcsot csak létrehozáskor mutatjuk meg, és
+              kizárólag a hashét tároljuk. Elveszett kulcs helyett újat kell
+              létrehozni.
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Connected sources</CardTitle>
+            <CardTitle>Csatlakoztatott források</CardTitle>
           </CardHeader>
           <CardContent>
             {connected.length === 0 ? (
               <p className="text-xs text-muted-foreground">
-                No external source is connected. Revenue currently comes only
-                from events sent to the API.
+                Még nincs külső adatforrás csatlakoztatva. A bevétel jelenleg
+                csak az API-n keresztül küldött eseményekből származik.
               </p>
             ) : (
               <Table>
                 <thead>
                   <tr>
-                    <Th>Provider</Th>
-                    <Th>Status</Th>
-                    <Th className="text-right">Events</Th>
-                    <Th>Last event</Th>
+                    <Th>Szolgáltató</Th>
+                    <Th>Állapot</Th>
+                    <Th className="text-right">Események</Th>
+                    <Th>Utolsó esemény</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -368,13 +379,13 @@ funnel.track("purchase_completed", {}, {
                                 : "positive"
                           }
                         >
-                          {integration.status.toLowerCase()}
+                          {displayLabel(integration.status)}
                         </Badge>
                       </Td>
                       <Td numeric>{integration.eventsReceived}</Td>
                       <Td className="text-2xs text-muted-foreground">
                         {integration.lastEventAt
-                          ? integration.lastEventAt.toISOString().slice(0, 10)
+                          ? formatDate(integration.lastEventAt, ctx.timezone)
                           : "—"}
                       </Td>
                     </tr>

@@ -46,7 +46,11 @@ export function formatPercent(
   digits = 1,
 ): string {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
-  return `${(value * 100).toFixed(digits)}%`;
+  return new Intl.NumberFormat("hu-HU", {
+    style: "percent",
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
 }
 
 /**
@@ -60,7 +64,7 @@ export function formatPointDelta(
 ): string {
   if (value === null || value === undefined || Number.isNaN(value)) return "—";
   const sign = value > 0 ? "+" : "";
-  return `${sign}${(value * 100).toFixed(digits)} pp`;
+  return `${sign}${formatDecimal(value * 100, digits)} százalékpont`;
 }
 
 export function formatRelativeChange(
@@ -78,13 +82,26 @@ export function formatRelativeChange(
   }
   const change = (current - previous) / previous;
   const sign = change > 0 ? "+" : "";
-  return { value: change, label: `${sign}${(change * 100).toFixed(1)}%` };
+  return { value: change, label: `${sign}${formatPercent(change)}` };
 }
 
 export function formatDuration(seconds: number | null | undefined): string {
   if (seconds === null || seconds === undefined) return "—";
-  if (seconds < 60) return `${Math.round(seconds)}s`;
-  if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
-  if (seconds < 86400) return `${(seconds / 3600).toFixed(1)}h`;
-  return `${(seconds / 86400).toFixed(1)}d`;
+  if (seconds < 60) return `${Math.round(seconds)} mp`;
+  if (seconds < 3600) return `${Math.round(seconds / 60)} perc`;
+  if (seconds < 86400) return `${formatDecimal(seconds / 3600)} óra`;
+  return `${formatDecimal(seconds / 86400)} nap`;
+}
+
+export function formatDecimal(value: number, digits = 1): string {
+  return new Intl.NumberFormat("hu-HU", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  }).format(value);
+}
+
+export function formatDate(value: Date | string, timeZone = "Europe/Budapest"): string {
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("hu-HU", { dateStyle: "medium", timeZone }).format(date);
 }

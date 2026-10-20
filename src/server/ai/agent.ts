@@ -72,7 +72,10 @@ Confidence
 
 Under Evidence, cite the actual figures the tools returned. Under Confidence,
 state what the tool reported and why, or "Confidence unavailable" with the
-reason. Write in plain prose. No emoji.`;
+reason. Write in plain prose. No emoji.
+
+LANGUAGE
+Always answer in Hungarian. Translate headings and display labels into Hungarian, and use Hungarian number and date formatting. Preserve identifiers, event names, currencies and quoted user data exactly.`;
 
 function toolSpecs(): ToolSpec[] {
   return ANALYTICS_TOOLS.map((tool) => ({
@@ -90,7 +93,9 @@ export async function runAnalyst(
 ): Promise<AgentResult> {
   const messages: ChatMessage[] = [
     { role: "system", content: SYSTEM_PROMPT },
-    ...history.map((entry) => ({ role: entry.role, content: entry.content }) as ChatMessage),
+    ...history.map(
+      (entry) => ({ role: entry.role, content: entry.content }) as ChatMessage,
+    ),
     { role: "user", content: question },
   ];
 
@@ -102,7 +107,9 @@ export async function runAnalyst(
 
     if (result.toolCalls.length === 0) {
       return {
-        answer: result.content.trim() || "I could not produce an answer for that.",
+        answer:
+          result.content.trim() ||
+          "Erre a kérdésre nem sikerült választ készítenem.",
         trace,
         toolsUsed: [...new Set(trace.map((entry) => entry.tool))],
         truncated: false,
@@ -185,7 +192,7 @@ export async function runAnalyst(
 
   return {
     answer:
-      "I ran out of steps before reaching a conclusion. Try asking about one metric at a time.",
+      "A megengedett lépésekből nem jutottam következtetésre. Próbálj egyszerre egy mutatóról kérdezni.",
     trace,
     toolsUsed: [...new Set(trace.map((entry) => entry.tool))],
     truncated: true,

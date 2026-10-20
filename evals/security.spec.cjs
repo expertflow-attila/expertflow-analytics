@@ -18,22 +18,26 @@ test("foreign conversation must not be readable or writable by another tenant", 
     await page.goto("http://localhost:3101/login");
     await page.locator("#email").fill("demo@funnelintelligence.dev");
     await page.locator("#password").fill("demo1234");
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Bejelentkezés", exact: true })
+      .click();
     await page.waitForURL(/overview/);
     await page.goto("http://localhost:3101/ai");
     await page
       .locator("textarea[name=question]")
       .fill("Audit question from another tenant");
     await page.locator("textarea[name=question]").evaluate((e, id) => {
-      const h = e.form.querySelector("input[name=conversationId]") || document.createElement("input");
+      const h =
+        e.form.querySelector("input[name=conversationId]") ||
+        document.createElement("input");
       h.type = "hidden";
       h.name = "conversationId";
       h.value = id;
       e.form.append(h);
     }, id);
-    await page.getByRole("button", { name: "Ask", exact: true }).click();
+    await page.getByRole("button", { name: "Kérdezés", exact: true }).click();
     await expect(
-      page.getByRole("button", { name: "Ask", exact: true }),
+      page.getByRole("button", { name: "Kérdezés", exact: true }),
     ).toBeEnabled({ timeout: 20000 });
     const messages =
       await sql`select role,content from ai_messages where conversation_id=${id}`;
@@ -58,9 +62,12 @@ test("foreign conversation must not be readable or writable by another tenant", 
       "Other tenant conversation must remain unchanged",
     ).toBe(1);
     expect(evidence.foreignHistorySentToProvider).toBe(false);
-    expect(captured, "Rejected conversation must not invoke the provider").toBeNull();
+    expect(
+      captured,
+      "Rejected conversation must not invoke the provider",
+    ).toBeNull();
     await expect(page.locator("p[role=alert]")).toContainText(
-      "Conversation not found",
+      "A beszélgetés nem található",
     );
   } finally {
     await sql`delete from ai_conversations where id=${id}`;
@@ -74,13 +81,15 @@ test("own-project AI conversation still works after tenant guard", async ({
   await page.goto("http://localhost:3101/login");
   await page.locator("#email").fill("demo@funnelintelligence.dev");
   await page.locator("#password").fill("demo1234");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Bejelentkezés", exact: true })
+    .click();
   await page.waitForURL(/overview/);
   await page.goto("http://localhost:3101/ai");
   await page
     .locator("textarea[name=question]")
     .fill("Show local evaluation answer");
-  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  await page.getByRole("button", { name: "Kérdezés", exact: true }).click();
   await expect(
     page.getByText("Local audit response", { exact: true }).last(),
   ).toBeVisible();

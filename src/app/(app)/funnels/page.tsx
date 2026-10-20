@@ -1,3 +1,4 @@
+import { displayLabel, displayPath } from "@/lib/labels";
 import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 
@@ -18,7 +19,7 @@ import { db } from "@/server/db";
 import { funnelNodes, funnels } from "@/server/db/schema";
 import { features } from "@/env";
 
-export const metadata = { title: "Funnels" };
+export const metadata = { title: "Tölcsérek" };
 export const dynamic = "force-dynamic";
 
 export default async function FunnelsPage({
@@ -40,12 +41,12 @@ export default async function FunnelsPage({
   if (available.length === 0) {
     return (
       <>
-        <PageHeader title="Funnels" />
+        <PageHeader title="Tölcsérek" />
         <PageBody>
           {canEdit ? <FunnelEditor projectId={ctx.projectId} /> : null}
           <EmptyState
-            title="No funnel has been built yet"
-            description="A funnel is an ordered set of steps, each matching one event. Build one to see conversion, drop-off and the revenue behind each step."
+            title="Még nincs értékesítési tölcsér"
+            description="A tölcsér egymást követő, eseményekhez kapcsolt lépésekből áll. Hozz létre egyet a konverzió, a lemorzsolódás és az egyes lépések bevételének elemzéséhez."
           />
         </PageBody>
       </>
@@ -58,11 +59,11 @@ export default async function FunnelsPage({
   if (!data) {
     return (
       <>
-        <PageHeader title="Funnels" />
+        <PageHeader title="Tölcsérek" />
         <PageBody>
           <EmptyState
-            title="That funnel could not be found"
-            description="It may have been deleted, or it belongs to a different project."
+            title="Ez a tölcsér nem található"
+            description="Lehet, hogy törölték, vagy egy másik projekthez tartozik."
           />
         </PageBody>
       </>
@@ -135,7 +136,7 @@ export default async function FunnelsPage({
         title={data.funnel.name}
         description={
           data.funnel.description ??
-          `${data.funnel.mode.toLowerCase()} matching, ${Math.round(data.funnel.conversionWindowSeconds / 86400)} day conversion window.`
+          `${displayLabel(data.funnel.mode)} · ${Math.round(data.funnel.conversionWindowSeconds / 86400)} napos konverziós időablak`
         }
         actions={
           available.length > 1 ? (
@@ -190,7 +191,7 @@ export default async function FunnelsPage({
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3">
             <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
-              Entered funnel
+              Tölcsérbe belépők
             </p>
             <p className="tabular mt-1 text-lg font-semibold">
               {formatNumber(data.result.totalEntered)}
@@ -198,7 +199,7 @@ export default async function FunnelsPage({
           </div>
           <div className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3">
             <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
-              Completed
+              Befejezték
             </p>
             <p className="tabular mt-1 text-lg font-semibold">
               {formatNumber(data.result.totalConverted)}
@@ -209,7 +210,7 @@ export default async function FunnelsPage({
           </div>
           <div className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3">
             <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
-              Revenue in window
+              Bevétel az időablakban
             </p>
             <p className="tabular mt-1 text-lg font-semibold">
               {formatCurrency(data.result.totalRevenueMinor, ctx.baseCurrency, {
@@ -227,19 +228,19 @@ export default async function FunnelsPage({
 
         <Card>
           <CardHeader>
-            <CardTitle>Step detail</CardTitle>
+            <CardTitle>Lépések részletei</CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
               <thead>
                 <tr>
-                  <Th>Step</Th>
-                  <Th className="text-right">Entered</Th>
-                  <Th className="text-right">Converted</Th>
-                  <Th className="text-right">Rate</Th>
-                  <Th className="text-right">Target</Th>
-                  <Th className="text-right">Variance</Th>
-                  <Th className="text-right">Median time</Th>
+                  <Th>Lépés</Th>
+                  <Th className="text-right">Belépők</Th>
+                  <Th className="text-right">Továbblépők</Th>
+                  <Th className="text-right">Arány</Th>
+                  <Th className="text-right">Cél</Th>
+                  <Th className="text-right">Eltérés</Th>
+                  <Th className="text-right">Medián idő</Th>
                 </tr>
               </thead>
               <tbody>
@@ -249,7 +250,7 @@ export default async function FunnelsPage({
                       <span className="flex items-center gap-2">
                         {node.name}
                         {node.nodeId === biggestLeakId ? (
-                          <Badge tone="negative">leak</Badge>
+                          <Badge tone="negative">bevételkiesés</Badge>
                         ) : null}
                       </span>
                     </Td>
@@ -273,14 +274,21 @@ export default async function FunnelsPage({
                           }
                         >
                           {node.varianceToTargetPoints > 0 ? "+" : ""}
-                          {(node.varianceToTargetPoints * 100).toFixed(1)} pp
+                          {(node.varianceToTargetPoints * 100).toLocaleString(
+                            "hu-HU",
+                            {
+                              minimumFractionDigits: 1,
+                              maximumFractionDigits: 1,
+                            },
+                          )}{" "}
+                          százalékpont
                         </span>
                       )}
                     </Td>
                     <Td numeric>
                       {node.medianTimeToConvertSeconds === null
                         ? "—"
-                        : `${Math.round(node.medianTimeToConvertSeconds / 3600)}h`}
+                        : `${Math.round(node.medianTimeToConvertSeconds / 3600)} óra`}
                     </Td>
                   </tr>
                 ))}
@@ -292,26 +300,26 @@ export default async function FunnelsPage({
         {features.observedJourney ? (
           <Card>
             <CardHeader>
-              <CardTitle>Planned versus observed</CardTitle>
+              <CardTitle>Tervezett és tényleges útvonalak</CardTitle>
             </CardHeader>
             <CardContent>
               {observed.length > 0 ? (
                 <>
                   <p className="mb-4 text-sm">
-                    {(offPlanShare * 100).toFixed(0)}% of paying customers
-                    followed a path that differs from the funnel drawn above.
+                    {(offPlanShare * 100).toFixed(0)}% a fizető ügyfelek közül a
+                    fenti tölcsértől eltérő útvonalat követett.
                   </p>
                   <ul className="space-y-2">
                     {observed.slice(0, 6).map((path) => (
                       <li
-                        key={path.path}
+                        key={displayPath(path.path)}
                         className="flex items-baseline justify-between gap-4 border-b border-border pb-2 text-xs last:border-0"
                       >
                         <span className="min-w-0 truncate text-muted-foreground">
-                          {path.path}
+                          {displayPath(path.path)}
                         </span>
                         <span className="tabular shrink-0 font-medium">
-                          {formatNumber(path.people)} people
+                          {formatNumber(path.people)} fő
                         </span>
                       </li>
                     ))}
@@ -319,8 +327,8 @@ export default async function FunnelsPage({
                 </>
               ) : (
                 <EmptyState
-                  title="No observed paths yet"
-                  description="Observed journeys are built from what people actually did, independent of the funnel drawn above. They appear once customers have completed a purchase."
+                  title="Még nincsenek megfigyelt útvonalak"
+                  description="A tényleges ügyfélutak a rögzített viselkedésből épülnek fel, a megtervezett tölcsértől függetlenül. Az első befejezett vásárlások után jelennek meg."
                 />
               )}
             </CardContent>

@@ -10,19 +10,21 @@ test("invalid timezone must be rejected before workspace creation", async ({
   await page.locator("#email").fill(email);
   await page.locator("#password").fill("demo1234");
   await page
-    .getByRole("button", { name: "Create account", exact: true })
+    .getByRole("button", { name: "Fiók létrehozása", exact: true })
     .click();
   await page.waitForURL(/registered/);
   await page.locator("#email").fill(email);
   await page.locator("#password").fill("demo1234");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Bejelentkezés", exact: true })
+    .click();
   await page.waitForURL(/onboarding/);
   await page.locator("#organizationName").fill("Invalid timezone audit");
   await page.locator("#projectName").fill("Invalid timezone project");
   await page.locator("#timezone").fill("not-a-timezone");
   await page.locator("button[type=submit]").click();
   await expect(page.locator("p[role=alert]")).toContainText(
-    "valid IANA timezone",
+    "érvényes IANA-időzónát",
   );
   const accepted = page.url().includes("integrations");
   let status = null;

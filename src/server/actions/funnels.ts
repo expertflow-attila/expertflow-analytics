@@ -31,7 +31,7 @@ const schema = z
   .refine((v) => {
     const ids = v.steps.flatMap((s) => (s.id ? [s.id] : []));
     return new Set(ids).size === ids.length;
-  }, "Duplicate step identifiers.");
+  }, "Ismétlődő lépésazonosítók.");
 
 export async function saveFunnel(
   _: ConfigResult,
@@ -39,14 +39,14 @@ export async function saveFunnel(
 ): Promise<ConfigResult> {
   const ctx = await requireProject(String(form.get("projectId") ?? ""));
   if (ctx.role !== "ADMIN" && ctx.role !== "OWNER")
-    return { error: "Administrator access required." };
+    return { error: "Rendszergazdai jogosultság szükséges." };
   let raw: unknown;
   try {
     raw = JSON.parse(String(form.get("funnel")));
   } catch {
-    return { error: "Invalid funnel data." };
+    return { error: "Érvénytelen tölcséradatok." };
   }
-  const parsed = schema.safeParse(raw);
+  const parsed = schema.safeParse(raw, { error: z.locales.hu().localeError });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const data = parsed.data;
   const result = await db.transaction(async (tx) => {
@@ -64,11 +64,11 @@ export async function saveFunnel(
         )
         .for("update")
         .limit(1);
-      if (!existing) return { error: "Funnel not found." };
+      if (!existing) return { error: "A tölcsér nem található." };
     }
     const ids = data.steps.flatMap((s) => (s.id ? [s.id] : []));
     if (ids.length) {
-      if (!funnelId) return { error: "Invalid step identifiers." };
+      if (!funnelId) return { error: "Érvénytelen lépésazonosítók." };
       const owned = await tx
         .select({ id: funnelNodes.id })
         .from(funnelNodes)
@@ -80,7 +80,7 @@ export async function saveFunnel(
           ),
         );
       if (owned.length !== ids.length)
-        return { error: "Step not found in this funnel." };
+        return { error: "Ez a lépés nem tartozik a tölcsérhez." };
     }
     const values = {
       name: data.name,
@@ -148,29 +148,23 @@ export async function saveFunnel(
       }
     }
     if (saved.length > 1)
-      await tx
-        .insert(funnelEdges)
-        .values(
-          saved
-            .slice(0, -1)
-            .map((id, index) => ({
-              organizationId: ctx.organizationId,
-              projectId: ctx.projectId,
-              funnelId,
-              sourceNodeId: id,
-              targetNodeId: saved[index + 1],
-            })),
-        );
-    await tx
-      .insert(auditLogs)
-      .values({
-        organizationId: ctx.organizationId,
-        projectId: ctx.projectId,
-        actorUserId: ctx.userId,
-        action: "funnel.saved",
-        targetType: "funnel",
-        targetId: funnelId,
-      });
+      await tx.insert(funnelEdges).values(
+        saved.slice(0, -1).map((id, index) => ({
+          organizationId: ctx.organizationId,
+          projectId: ctx.projectId,
+          funnelId,
+          sourceNodeId: id,
+          targetNodeId: saved[index + 1],
+        })),
+      );
+    await tx.insert(auditLogs).values({
+      organizationId: ctx.organizationId,
+      projectId: ctx.projectId,
+      actorUserId: ctx.userId,
+      action: "funnel.saved",
+      targetType: "funnel",
+      targetId: funnelId,
+    });
     return { id: funnelId };
   });
   if ("error" in result) return { error: result.error };

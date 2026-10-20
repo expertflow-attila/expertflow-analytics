@@ -1,3 +1,5 @@
+import { formatDate, formatRelativeChange } from "@/lib/utils";
+import { displayLabel } from "@/lib/labels";
 import { ArrowRight, TrendingDown, TrendingUp } from "lucide-react";
 import Link from "next/link";
 
@@ -10,7 +12,10 @@ import {
 } from "@/components/page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, EmptyState } from "@/components/ui/primitives";
-import { calculateTrackingHealth, detectAnomalies } from "@/lib/analytics/anomaly-core";
+import {
+  calculateTrackingHealth,
+  detectAnomalies,
+} from "@/lib/analytics/anomaly-core";
 import { attributeByChannel } from "@/lib/analytics/attribution-core";
 import { rankOpportunities } from "@/lib/analytics/opportunity-core";
 import { buildExecutiveSummary } from "@/lib/analytics/summary";
@@ -33,7 +38,7 @@ import { db } from "@/server/db";
 import { funnels } from "@/server/db/schema";
 import { eq } from "drizzle-orm";
 
-export const metadata = { title: "Overview" };
+export const metadata = { title: "Áttekintés" };
 export const dynamic = "force-dynamic";
 
 export default async function OverviewPage({
@@ -95,7 +100,10 @@ export default async function OverviewPage({
     netRevenueMinor: current.netRevenueMinor,
     previousNetRevenueMinor: prior.netRevenueMinor,
     topChannel: channels[0]
-      ? { name: channels[0].channel, revenueMinor: channels[0].attributedRevenueMinor }
+      ? {
+          name: channels[0].channel,
+          revenueMinor: channels[0].attributedRevenueMinor,
+        }
       : null,
     biggestOpportunity: opportunities[0] ?? null,
     trackingHealthScore: trackingHealth.score,
@@ -107,24 +115,17 @@ export default async function OverviewPage({
     .sort((a, b) => Math.abs(b.changeFraction) - Math.abs(a.changeFraction))
     .slice(0, 4);
 
-  const delta = (currentValue: number, previousValue: number) => {
-    if (previousValue === 0) return { label: "—", value: null };
-    const change = (currentValue - previousValue) / previousValue;
-    return {
-      label: `${change > 0 ? "+" : ""}${(change * 100).toFixed(1)}%`,
-      value: change,
-    };
-  };
+  const delta = formatRelativeChange;
 
   return (
     <>
       <PageHeader
-        title="Overview"
-        description={`${periodDays} days to today, in ${ctx.timezone}.`}
+        title="Áttekintés"
+        description={`Az elmúlt ${periodDays} nap adatai · ${ctx.timezone}`}
         actions={
           <DataQualityBadge
             score={trackingHealth.score}
-            detail="Derived from duplicate rate, source coverage and purchase reconciliation."
+            detail="A duplikált események, a forrásazonosítás és a vásárlásegyeztetés alapján."
           />
         }
       />
@@ -134,7 +135,7 @@ export default async function OverviewPage({
 
         <Card>
           <CardHeader>
-            <CardTitle>Executive summary</CardTitle>
+            <CardTitle>Vezetői összefoglaló</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             {summary.map((sentence) => (
@@ -147,25 +148,25 @@ export default async function OverviewPage({
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile
-            label="Net revenue"
+            label="Nettó bevétel"
             value={formatCurrency(current.netRevenueMinor, ctx.baseCurrency, {
               compact: true,
             })}
             delta={delta(current.netRevenueMinor, prior.netRevenueMinor)}
-            hint="after refunds"
+            hint="visszatérítések után"
           />
           <StatTile
-            label="Customers"
+            label="Ügyfelek"
             value={formatNumber(current.customers)}
             delta={delta(current.customers, prior.customers)}
           />
           <StatTile
-            label="Leads"
+            label="Érdeklődők"
             value={formatNumber(current.leads, { compact: true })}
             delta={delta(current.leads, prior.leads)}
           />
           <StatTile
-            label="Visitors"
+            label="Látogatók"
             value={formatNumber(current.visitors, { compact: true })}
             delta={delta(current.visitors, prior.visitors)}
           />
@@ -173,26 +174,28 @@ export default async function OverviewPage({
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile
-            label="Funnel conversion"
-            value={formatPercent(funnelData?.result.overallConversionRate ?? null)}
-            hint="visitor to customer"
+            label="Tölcsérkonverzió"
+            value={formatPercent(
+              funnelData?.result.overallConversionRate ?? null,
+            )}
+            hint="látogatóból vásárló"
           />
           <StatTile
-            label="Average order value"
+            label="Átlagos rendelési érték"
             value={formatCurrency(
               current.averageOrderValueMinor,
               ctx.baseCurrency,
             )}
           />
           <StatTile
-            label="Revenue per visitor"
+            label="Bevétel látogatónként"
             value={formatCurrency(
               current.revenuePerVisitorMinor,
               ctx.baseCurrency,
             )}
           />
           <StatTile
-            label="MRR"
+            label="Havi ismétlődő bevétel"
             value={
               current.mrrMinor === 0
                 ? "—"
@@ -200,19 +203,19 @@ export default async function OverviewPage({
                     compact: true,
                   })
             }
-            hint={current.mrrMinor === 0 ? "no active subscriptions" : undefined}
+            hint={current.mrrMinor === 0 ? "nincs aktív előfizetés" : undefined}
           />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader className="flex-row items-center justify-between">
-              <CardTitle>Biggest opportunity</CardTitle>
+              <CardTitle>Legnagyobb lehetőség</CardTitle>
               <Link
                 href="/opportunities"
                 className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
               >
-                All opportunities <ArrowRight className="size-3" aria-hidden />
+                Összes lehetőség <ArrowRight className="size-3" aria-hidden />
               </Link>
             </CardHeader>
             <CardContent>
@@ -223,10 +226,11 @@ export default async function OverviewPage({
                       {opportunities[0].nodeName}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {formatPercent(opportunities[0].currentConversionRate)} today
-                      against a {formatPercent(opportunities[0].targetConversionRate)}{" "}
-                      target, across{" "}
-                      {formatNumber(opportunities[0].eligibleUsers)} people.
+                      {formatPercent(opportunities[0].currentConversionRate)}{" "}
+                      jelenlegi arány; cél:{" "}
+                      {formatPercent(opportunities[0].targetConversionRate)} ,
+                      érintett: {formatNumber(opportunities[0].eligibleUsers)}{" "}
+                      fő.
                     </p>
                   </div>
 
@@ -237,7 +241,7 @@ export default async function OverviewPage({
                       { compact: true },
                     )}
                     <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                      estimated monthly upside
+                      becsült havi többletbevétel
                     </span>
                   </p>
 
@@ -251,19 +255,19 @@ export default async function OverviewPage({
                             : "neutral"
                       }
                     >
-                      {opportunities[0].confidence} confidence
+                      {displayLabel(opportunities[0].confidence)} megbízhatóság
                     </Badge>
                   </div>
 
                   <p className="text-2xs leading-relaxed text-subtle-foreground">
-                    {opportunities[0].confidenceReason} This is an estimate from
-                    observed downstream revenue, not a forecast.
+                    {opportunities[0].confidenceReason} A becslés a későbbi
+                    lépésekben megfigyelt bevételen alapul, nem előrejelzés.
                   </p>
                 </div>
               ) : (
                 <EmptyState
-                  title="No opportunity can be estimated yet"
-                  description="Opportunities need a funnel with conversion targets and observed downstream revenue."
+                  title="Még nem becsülhető bevételi lehetőség"
+                  description="A lehetőségek becsléséhez konverziós célokkal rendelkező tölcsér és megfigyelt bevétel szükséges."
                 />
               )}
             </CardContent>
@@ -271,14 +275,14 @@ export default async function OverviewPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>What changed</CardTitle>
+              <CardTitle>Mi változott?</CardTitle>
             </CardHeader>
             <CardContent>
               {changes.length > 0 ? (
                 <ul className="space-y-3">
                   {changes.map((anomaly) => (
                     <li
-                      key={`${anomaly.metric}-${anomaly.date}`}
+                      key={`${displayLabel(anomaly.metric)}-${formatDate(anomaly.date, ctx.timezone)}`}
                       className="flex items-start gap-2.5"
                     >
                       {anomaly.direction === "SPIKE" ? (
@@ -295,15 +299,18 @@ export default async function OverviewPage({
                       <div className="min-w-0">
                         <p className="text-sm">
                           <span className="font-medium capitalize">
-                            {anomaly.metric}
+                            {displayLabel(anomaly.metric)}
                           </span>{" "}
-                          {anomaly.direction === "SPIKE" ? "rose" : "fell"}{" "}
-                          {Math.abs(anomaly.changeFraction * 100).toFixed(0)}% on{" "}
-                          {anomaly.date}
+                          {anomaly.direction === "SPIKE"
+                            ? "növekedett"
+                            : "csökkent"}{" "}
+                          {Math.abs(anomaly.changeFraction * 100).toFixed(0)}%
+                          mértékben ezen a napon: {formatDate(anomaly.date, ctx.timezone)}
                         </p>
                         <p className="text-2xs text-muted-foreground">
-                          Expected around {formatNumber(anomaly.expected)}, observed{" "}
-                          {formatNumber(anomaly.observed)} ({anomaly.deviationSigma}σ)
+                          Várt érték: {formatNumber(anomaly.expected)},
+                          tényleges: {formatNumber(anomaly.observed)} (
+                          {anomaly.deviationSigma}σ)
                         </p>
                       </div>
                     </li>
@@ -311,8 +318,8 @@ export default async function OverviewPage({
                 </ul>
               ) : (
                 <EmptyState
-                  title="Nothing unusual in this period"
-                  description="Anomaly detection compares each day against a rolling baseline of the same weekday. It stays quiet until a move is both large and statistically unusual."
+                  title="Nincs szokatlan változás az időszakban"
+                  description="Minden napot az azonos hétköznapok gördülő átlagával vetünk össze. Csak a nagy és statisztikailag szokatlan eltéréseket jelezzük."
                 />
               )}
             </CardContent>
@@ -321,12 +328,12 @@ export default async function OverviewPage({
 
         <Card>
           <CardHeader className="flex-row items-center justify-between">
-            <CardTitle>Attributed revenue by channel</CardTitle>
+            <CardTitle>Csatornához rendelt bevétel</CardTitle>
             <Link
               href="/attribution"
               className="inline-flex items-center gap-1 text-xs text-accent hover:underline"
             >
-              Attribution lab <ArrowRight className="size-3" aria-hidden />
+              Attribúciós elemzés <ArrowRight className="size-3" aria-hidden />
             </Link>
           </CardHeader>
           <CardContent>
@@ -340,9 +347,14 @@ export default async function OverviewPage({
                         channels[0].attributedRevenueMinor;
 
                   return (
-                    <li key={channel.channel} className="space-y-1">
+                    <li
+                      key={displayLabel(channel.channel)}
+                      className="space-y-1"
+                    >
                       <div className="flex items-baseline justify-between gap-3 text-sm">
-                        <span className="truncate">{channel.channel}</span>
+                        <span className="truncate">
+                          {displayLabel(channel.channel)}
+                        </span>
                         <span className="tabular shrink-0 font-medium">
                           {formatCurrency(
                             channel.attributedRevenueMinor,
@@ -363,13 +375,13 @@ export default async function OverviewPage({
               </ul>
             ) : (
               <EmptyState
-                title="No revenue has been attributed yet"
-                description="Attribution needs purchases that resolve to a person with at least one recorded touchpoint."
+                title="Még nincs csatornához rendelt bevétel"
+                description="Az attribúcióhoz azonosított vásárló és legalább egy rögzített érintési pont szükséges."
               />
             )}
             <p className="mt-4 text-2xs text-subtle-foreground">
-              Credited with the U-shaped model over a 90 day window. Different
-              models will disagree — the Attribution Lab shows by how much.
+              U alakú modell, 90 napos időablakkal. A modellek eltérő eredményt
+              adhatnak; az Attribúciós elemzés megmutatja az eltérés mértékét.
             </p>
           </CardContent>
         </Card>

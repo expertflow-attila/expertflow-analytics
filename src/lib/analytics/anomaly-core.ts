@@ -1,3 +1,4 @@
+import { formatPercent } from "../utils";
 /**
  * Anomaly detection — pure core.
  *
@@ -167,7 +168,7 @@ export function calculateTrackingHealth(input: TrackingHealthInput): {
     return {
       score: null,
       unavailableReason:
-        "No events have been received yet, so data quality cannot be assessed.",
+        "Még nem érkeztek események, ezért az adatminőség nem mérhető.",
       checks: [],
     };
   }
@@ -178,69 +179,74 @@ export function calculateTrackingHealth(input: TrackingHealthInput): {
   const checks: HealthCheck[] = [
     buildCheck({
       key: "duplicate_events",
-      label: "Duplicate events",
+      label: "Duplikált események",
       value: safeRatio(input.duplicateEvents, input.totalEvents),
       warnAt: 0.02,
       failAt: 0.1,
       weight: 15,
-      detail: (v) => `${(v * 100).toFixed(1)}% of received events were duplicates.`,
+      detail: (v) =>
+        `A beérkezett események ${formatPercent(v)} része duplikált.`,
       recommendation:
-        "Ensure every event carries a stable event_id and that the SDK is loaded once per page.",
+        "Minden esemény kapjon stabil event_id azonosítót, és a mérőkód oldalanként csak egyszer töltődjön be.",
     }),
     buildCheck({
       key: "unknown_source",
-      label: "Unknown traffic source",
+      label: "Ismeretlen forgalmi forrás",
       value: safeRatio(input.sessionsWithUnknownSource, input.totalSessions),
       warnAt: 0.1,
       failAt: 0.3,
       weight: 20,
-      detail: (v) => `${(v * 100).toFixed(1)}% of sessions have no identifiable source.`,
+      detail: (v) =>
+        `A munkamenetek ${formatPercent(v)} részének nincs azonosítható forrása.`,
       recommendation:
-        "Add UTM parameters to paid and email links, and verify the referrer is not stripped by a redirect.",
+        "Adj UTM-paramétereket a hirdetési és e-mailes linkekhez, és ellenőrizd, hogy az átirányítás nem törli-e a hivatkozó oldalt.",
     }),
     buildCheck({
       key: "purchase_reconciliation",
-      label: "Purchase reconciliation",
+      label: "Vásárlások egyeztetése",
       value: safeRatio(input.purchasesWithoutPerson, input.totalPurchases),
       warnAt: 0.02,
       failAt: 0.1,
       weight: 25,
-      detail: (v) => `${(v * 100).toFixed(1)}% of purchases could not be matched to a person.`,
+      detail: (v) =>
+        `A vásárlások ${formatPercent(v)} részét nem sikerült személyhez kapcsolni.`,
       recommendation:
-        "Call funnel.identify() with the buyer's email before or at checkout so revenue joins the journey.",
+        "Hívd meg a funnel.identify() függvényt a vásárló e-mail-címével legkésőbb a pénztárnál, hogy a bevétel az ügyfélúthoz kapcsolódjon.",
     }),
     buildCheck({
       key: "identity_coverage",
-      label: "Identity coverage",
+      label: "Azonosítási arány",
       value: safeRatio(input.eventsWithoutIdentity, input.totalEvents),
       warnAt: 0.7,
       failAt: 0.9,
       weight: 15,
-      detail: (v) => `${(v * 100).toFixed(1)}% of events are still anonymous.`,
+      detail: (v) => `Az események ${formatPercent(v)} része még anonim.`,
       recommendation:
-        "Identify people at the first form submission so earlier anonymous activity can be back-filled.",
+        "Az első űrlapbeküldéskor azonosítsd a látogatót, hogy korábbi anonim aktivitása is hozzákapcsolódjon.",
     }),
     buildCheck({
       key: "ingest_errors",
-      label: "Ingest errors",
+      label: "Adatfogadási hibák",
       value: safeRatio(input.ingestErrors, input.ingestRequests),
       warnAt: 0.01,
       failAt: 0.05,
       weight: 15,
-      detail: (v) => `${(v * 100).toFixed(2)}% of ingest requests failed.`,
+      detail: (v) =>
+        `Az adatfogadási kérések ${formatPercent(v, 2)} része sikertelen.`,
       recommendation:
-        "Check the Integrations page for the failing source and review recent payload changes.",
+        "Az Integrációk oldalon keresd meg a hibás forrást, és ellenőrizd a beküldött adatok legutóbbi változásait.",
     }),
     buildCheck({
       key: "paid_utm_coverage",
-      label: "UTM coverage on paid traffic",
+      label: "Fizetett forgalom UTM-lefedettsége",
       value: safeRatio(input.eventsMissingUtmOnPaid, input.paidEvents),
       warnAt: 0.05,
       failAt: 0.2,
       weight: 10,
-      detail: (v) => `${(v * 100).toFixed(1)}% of paid events arrived without campaign tags.`,
+      detail: (v) =>
+        `A fizetett események ${formatPercent(v)} része kampányjelölés nélkül érkezett.`,
       recommendation:
-        "Enable auto-tagging on the ad platform or add utm_campaign to every ad destination URL.",
+        "Kapcsold be az automatikus címkézést a hirdetési felületen, vagy adj utm_campaign paramétert minden hirdetési céloldalhoz.",
     }),
   ];
 

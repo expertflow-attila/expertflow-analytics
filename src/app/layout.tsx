@@ -14,11 +14,11 @@ const mono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Funnel Intelligence OS",
-    template: "%s · Funnel Intelligence OS",
+    default: "Business Native · Analitika",
+    template: "%s · Business Native",
   },
   description:
-    "Open-source customer journey, funnel analytics and revenue intelligence.",
+    "Ügyfélutak, értékesítési tölcsérek és bevételek elemzése egy helyen.",
 };
 
 export default function RootLayout({
@@ -27,8 +27,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${sans.variable} ${mono.variable}`}>{children}</body>
+    <html
+      lang="hu"
+      className={`${sans.variable} ${mono.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="font-sans">{children}</body>
     </html>
   );
 }

@@ -4,7 +4,7 @@ import { OnboardingForm } from "@/components/onboarding-form";
 import { auth } from "@/server/auth";
 import { listUserOrganizations } from "@/server/tenancy";
 
-export const metadata = { title: "Set up your workspace" };
+export const metadata = { title: "Munkaterület beállítása" };
 export const dynamic = "force-dynamic";
 
 export default async function OnboardingPage() {

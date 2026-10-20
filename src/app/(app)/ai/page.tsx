@@ -5,12 +5,15 @@ import { DemoDataBanner, PageBody, PageHeader } from "@/components/page";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge, EmptyState } from "@/components/ui/primitives";
 import { features } from "@/env";
-import { isDemoDataset, resolveProjectContext } from "@/server/analytics/context";
+import {
+  isDemoDataset,
+  resolveProjectContext,
+} from "@/server/analytics/context";
 import { resolveProvider } from "@/server/ai/provider";
 import { db } from "@/server/db";
 import { aiConversations, aiMessages } from "@/server/db/schema";
 
-export const metadata = { title: "AI Analyst" };
+export const metadata = { title: "AI-elemző" };
 export const dynamic = "force-dynamic";
 
 export default async function AiPage({
@@ -52,8 +55,8 @@ export default async function AiPage({
   return (
     <>
       <PageHeader
-        title="AI Analyst"
-        description="Asks the same analytics engines the rest of this product uses. It cannot calculate a metric itself, and every answer shows which tools produced it."
+        title="AI-elemző"
+        description="A válaszok az alkalmazás elemzőmotorjaira támaszkodnak. Minden megállapítás mellett ellenőrizhető, mely adatok és eszközök támasztják alá."
         actions={
           provider ? (
             <Badge tone="neutral">
@@ -68,20 +71,20 @@ export default async function AiPage({
 
         {!features.aiAnalyst ? (
           <EmptyState
-            title="The AI Analyst is switched off"
-            description="Set FEATURE_AI_ANALYST=true to enable it. Every other page works without it."
+            title="Az AI-elemző ki van kapcsolva"
+            description="Az AI-elemzőt az üzemeltető kapcsolhatja be. Az alkalmazás többi része nélküle is használható."
           />
         ) : !provider ? (
           <EmptyState
-            title="No AI provider is configured"
-            description="Set ANTHROPIC_API_KEY or OPENAI_API_KEY, or point OLLAMA_BASE_URL at a local model. The rest of the product is fully usable without one."
+            title="Nincs beállított AI-szolgáltató"
+            description="Az üzemeltető csatlakoztathat Anthropic- vagy OpenAI-szolgáltatást, illetve helyi Ollama-modellt. Az elemzési oldalak ezek nélkül is használhatók."
           />
         ) : (
           <>
             {messages.length === 0 ? (
               <EmptyState
-                title="Ask about your funnel"
-                description="Try: where is my biggest revenue leak, which channel brings the best customers, or what changed in the last two weeks."
+                title="Kérdezz az értékesítési tölcséredről"
+                description="Például: hol veszítünk a legtöbb bevételt, melyik csatorna hozza a legértékesebb ügyfeleket, vagy mi változott az elmúlt két hétben?"
               />
             ) : (
               <ul className="space-y-4">
@@ -103,10 +106,10 @@ export default async function AiPage({
                           {message.toolTrace && message.toolTrace.length > 0 ? (
                             <details className="mt-4 border-t border-border pt-3">
                               <summary className="cursor-pointer text-2xs font-medium tracking-wide text-muted-foreground uppercase">
-                                Evidence · {message.toolTrace.length}{" "}
+                                Forrásadatok · {message.toolTrace.length}{" "}
                                 {message.toolTrace.length === 1
-                                  ? "tool call"
-                                  : "tool calls"}
+                                  ? "eszközhívás"
+                                  : "eszközhívás"}
                               </summary>
 
                               <div className="mt-3 space-y-3">
@@ -126,9 +129,9 @@ export default async function AiPage({
                               </div>
 
                               <p className="mt-3 text-2xs text-subtle-foreground">
-                                This is the data the answer was written from. It
-                                is the tool output, not the model&apos;s
-                                reasoning.
+                                A válasz alapjául szolgáló adatok és
+                                eszközeredmények. Ez nem a modell belső
+                                gondolatmenete.
                               </p>
                             </details>
                           ) : null}

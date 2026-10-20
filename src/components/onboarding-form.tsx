@@ -1,5 +1,6 @@
 "use client";
 
+import { Brand } from "@/components/brand";
 import { Check } from "lucide-react";
 import { useActionState, useState } from "react";
 
@@ -29,26 +30,27 @@ export function OnboardingForm() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
-      <div className="mb-8">
-        <h1 className="text-lg font-semibold tracking-tight">
-          Set up your workspace
+      <div className="mb-8 space-y-6">
+        <Brand href="/onboarding" />
+        <h1 className="text-3xl font-semibold tracking-tight">
+          Munkaterület beállítása
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Two names, a timezone and a starting funnel. Names and timezone can be
-          changed in Settings. Choose the base currency carefully; it stays
-          fixed to protect historical amounts.
+          Add meg a szervezet és a projekt nevét, az időzónát és a kezdő
+          tölcsért. A nevek és az időzóna később módosíthatók. Az alappénznem
+          rögzített marad a korábbi összegek védelmében.
         </p>
       </div>
 
       <form action={action} className="space-y-8">
-        <section className="space-y-4">
+        <section className="space-y-4 rounded-[var(--radius-card)] border border-border bg-surface p-5">
           <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Organization
+            Szervezet
           </h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="organizationName">Name</Label>
+              <Label htmlFor="organizationName">Név</Label>
               <Input
                 id="organizationName"
                 name="organizationName"
@@ -59,7 +61,7 @@ export function OnboardingForm() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="timezone">Timezone</Label>
+              <Label htmlFor="timezone">Időzóna</Label>
               <Input
                 id="timezone"
                 name="timezone"
@@ -67,32 +69,32 @@ export function OnboardingForm() {
                 defaultValue={detectedTimezone}
               />
               <p className="text-2xs text-subtle-foreground">
-                Every daily figure is bucketed in this timezone, so everyone on
-                your team sees the same numbers.
+                A napi mutatókat ebben az időzónában összesítjük, így a csapat
+                minden tagja ugyanazokat az értékeket látja.
               </p>
             </div>
           </div>
         </section>
 
-        <section className="space-y-4">
+        <section className="space-y-4 rounded-[var(--radius-card)] border border-border bg-surface p-5">
           <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Project
+            Projekt
           </h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
-              <Label htmlFor="projectName">Name</Label>
+              <Label htmlFor="projectName">Név</Label>
               <Input
                 id="projectName"
                 name="projectName"
                 required
                 minLength={2}
-                placeholder="Main website"
+                placeholder="Fő weboldal"
               />
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="baseCurrency">Base currency</Label>
+              <Label htmlFor="baseCurrency">Alappénznem</Label>
               <Input
                 id="baseCurrency"
                 name="baseCurrency"
@@ -103,16 +105,16 @@ export function OnboardingForm() {
                 className="uppercase"
               />
               <p className="text-2xs text-subtle-foreground">
-                Events in another currency are flagged, never silently
-                converted.
+                Az eltérő pénznemű eseményeket jelezzük, automatikus átváltás
+                nélkül.
               </p>
             </div>
           </div>
         </section>
 
-        <section className="space-y-4">
+        <section className="space-y-4 rounded-[var(--radius-card)] border border-border bg-surface p-5">
           <h2 className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Starting funnel
+            Kezdő tölcsér
           </h2>
 
           <input type="hidden" name="templateKey" value={template} />
@@ -144,9 +146,8 @@ export function OnboardingForm() {
                     {option.description}
                   </span>
                   <span className="mt-1.5 block text-2xs text-subtle-foreground">
-                    {option.steps.length}{" "}
-                    {option.steps.length === 1 ? "step" : "steps"} ·{" "}
-                    {option.conversionWindowDays} day window
+                    {option.steps.length} lépés ·{" "}
+                    {option.conversionWindowDays} napos időablak
                   </span>
                 </button>
               );
@@ -154,9 +155,9 @@ export function OnboardingForm() {
           </div>
 
           <p className="text-2xs leading-relaxed text-subtle-foreground">
-            Templates ship without conversion targets. A target you did not
-            choose would immediately produce a fictional revenue gap, so you set
-            them once you have a baseline.
+            A sablonok nem tartalmaznak konverziós célokat. Ezeket a saját
+            kiinduló adataid alapján állíthatod be, így elkerülhető a valótlan
+            bevételi rés kimutatása.
           </p>
         </section>
 
@@ -167,7 +168,7 @@ export function OnboardingForm() {
         ) : null}
 
         <Button type="submit" disabled={pending}>
-          {pending ? "Creating workspace…" : "Create workspace"}
+          {pending ? "Munkaterület létrehozása…" : "Munkaterület létrehozása"}
         </Button>
       </form>
     </div>

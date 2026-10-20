@@ -13,12 +13,14 @@ test("configuration, key lifecycle, funnel editing and tenant boundaries", async
     await page.locator("#email").fill(email);
     await page.locator("#password").fill("demo1234");
     await page
-      .getByRole("button", { name: "Create account", exact: true })
+      .getByRole("button", { name: "Fiók létrehozása", exact: true })
       .click();
     await page.waitForURL(/registered/);
     await page.locator("#email").fill(email);
     await page.locator("#password").fill("demo1234");
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Bejelentkezés", exact: true })
+      .click();
     await page.waitForURL(/onboarding/);
     await page.locator("#organizationName").fill("Configuration eval");
     await page.locator("#projectName").fill("Configuration project");
@@ -27,7 +29,9 @@ test("configuration, key lifecycle, funnel editing and tenant boundaries", async
     const [project] =
       await sql`select p.id,p.organization_id,m.user_id from projects p join memberships m on m.organization_id=p.organization_id join users u on u.id=m.user_id where u.email=${email}`;
     await page.locator("#keyName").fill("Eval server");
-    await page.getByRole("button", { name: "Create key", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Kulcs létrehozása", exact: true })
+      .click();
     const keyDisplay = page.getByTestId("new-api-key");
     await expect(keyDisplay).toBeVisible();
     const secret = await keyDisplay.innerText();
@@ -47,11 +51,11 @@ test("configuration, key lifecycle, funnel editing and tenant boundaries", async
     await page
       .locator("tr")
       .filter({ hasText: "Eval server" })
-      .getByRole("button", { name: "Revoke", exact: true })
+      .getByRole("button", { name: "Visszavonás", exact: true })
       .click();
     await expect(
       page.locator("tr").filter({ hasText: "Eval server" }),
-    ).toContainText("Revoked");
+    ).toContainText("Visszavonva");
     expect(
       (
         await request.post("/api/v1/events", {
@@ -70,10 +74,10 @@ test("configuration, key lifecycle, funnel editing and tenant boundaries", async
       }),
     );
     await page
-      .getByRole("button", { name: "Save webhook", exact: true })
+      .getByRole("button", { name: "Webhook mentése", exact: true })
       .click();
     await expect(
-      page.getByRole("button", { name: "Disconnect webhook", exact: true }),
+      page.getByRole("button", { name: "Webhook leválasztása", exact: true }),
     ).toBeVisible();
     const body = JSON.stringify({
       id: "ui_webhook_" + Date.now(),
@@ -101,13 +105,13 @@ test("configuration, key lifecycle, funnel editing and tenant boundaries", async
     ).toBe(401);
     await page.reload();
     await expect(
-      page.getByRole("button", { name: "Disconnect webhook", exact: true }),
+      page.getByRole("button", { name: "Webhook leválasztása", exact: true }),
     ).toBeVisible();
     await page
-      .getByRole("button", { name: "Disconnect webhook", exact: true })
+      .getByRole("button", { name: "Webhook leválasztása", exact: true })
       .click();
     await expect(
-      page.getByRole("button", { name: "Disconnect webhook", exact: true }),
+      page.getByRole("button", { name: "Webhook leválasztása", exact: true }),
     ).toHaveCount(0);
     expect(
       (
@@ -118,9 +122,9 @@ test("configuration, key lifecycle, funnel editing and tenant boundaries", async
     await page.locator("#projectName").fill("Renamed eval project");
     await page.locator("#timezone").fill("Europe/Budapest");
     await page
-      .getByRole("button", { name: "Save workspace", exact: true })
+      .getByRole("button", { name: "Munkaterület mentése", exact: true })
       .click();
-    await expect(page.getByRole("status").first()).toHaveText("Saved.");
+    await expect(page.getByRole("status").first()).toHaveText("Mentve.");
     await page.reload();
     await expect(page.locator("#projectName")).toHaveValue(
       "Renamed eval project",
@@ -130,39 +134,41 @@ test("configuration, key lifecycle, funnel editing and tenant boundaries", async
     await page.locator("#windowDays").fill("7");
     await page.locator("input[name=includeDirect]").uncheck();
     await page
-      .getByRole("button", { name: "Save attribution", exact: true })
+      .getByRole("button", { name: "Attribúció mentése", exact: true })
       .click();
-    await expect(page.getByRole("status").last()).toHaveText("Saved.");
+    await expect(page.getByRole("status").last()).toHaveText("Mentve.");
     await page.goto("/attribution");
-    await expect(page.getByText(/Configured model:/)).toContainText(
-      "Window: 7 days",
+    await expect(page.getByText(/Beállított modell:/)).toContainText(
+      "Időablak: 7 nap",
     );
-    await expect(page.getByText(/Configured model:/)).toContainText(
-      "Direct: excluded",
+    await expect(page.getByText(/Beállított modell:/)).toContainText(
+      "Közvetlen forgalom: kizárva",
     );
     await page.goto("/funnels");
-    await page.getByText("Edit funnel", { exact: true }).click();
+    await page.getByText("Tölcsér szerkesztése", { exact: true }).click();
     const editor = page
       .locator("details")
-      .filter({ has: page.getByText("Edit funnel", { exact: true }) });
+      .filter({ has: page.getByText("Tölcsér szerkesztése", { exact: true }) });
     await editor
-      .getByLabel("Funnel name", { exact: true })
+      .getByLabel("Tölcsér neve", { exact: true })
       .fill("Eval edited funnel");
     await editor.locator("#step-name-0").fill("Eval landing");
     await editor.locator("#step-target-0").fill("25");
-    await editor.getByRole("button", { name: "Add step", exact: true }).click();
+    await editor
+      .getByRole("button", { name: "Lépés hozzáadása", exact: true })
+      .click();
     await editor
       .locator("[data-testid=editable-step]")
       .last()
-      .getByLabel("Name", { exact: true })
+      .getByLabel("Név", { exact: true })
       .fill("Eval final step");
     await editor
-      .getByRole("button", { name: "Save funnel", exact: true })
+      .getByRole("button", { name: "Tölcsér mentése", exact: true })
       .click();
     await page.waitForURL(/funnels\?id=/);
     await expect(page.locator("h1")).toHaveText("Eval edited funnel");
     await page.reload();
-    await page.getByText("Edit funnel", { exact: true }).click();
+    await page.getByText("Tölcsér szerkesztése", { exact: true }).click();
     await expect(page.locator("#step-name-0").first()).toHaveValue(
       "Eval landing",
     );
@@ -174,9 +180,11 @@ test("configuration, key lifecycle, funnel editing and tenant boundaries", async
     await page.goto("/integrations");
     await page.locator("#keyName").fill("Must not create");
     await sql`update memberships set role='VIEWER' where user_id=${project.user_id} and organization_id=${project.organization_id}`;
-    await page.getByRole("button", { name: "Create key", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Kulcs létrehozása", exact: true })
+      .click();
     await expect(page.locator("p[role=alert]")).toContainText(
-      "Administrator access required",
+      "Rendszergazdai jogosultság szükséges",
     );
     expect(
       Number(
@@ -197,7 +205,9 @@ test("configuration, key lifecycle, funnel editing and tenant boundaries", async
           (input.form.querySelector("input[name=projectId]").value = id),
         foreign.id,
       );
-    await page.getByRole("button", { name: "Create key", exact: true }).click();
+    await page
+      .getByRole("button", { name: "Kulcs létrehozása", exact: true })
+      .click();
     await page.waitForTimeout(300);
     expect(
       Number(

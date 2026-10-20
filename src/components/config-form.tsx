@@ -7,7 +7,7 @@ import type { ConfigResult } from "@/server/actions/configuration";
 export function ConfigForm({
   action,
   children,
-  submitLabel = "Save",
+  submitLabel = "Mentés",
   confirmation,
 }: {
   action: (state: ConfigResult, data: FormData) => Promise<ConfigResult>;
@@ -27,7 +27,7 @@ export function ConfigForm({
     >
       {children}
       <Button type="submit" disabled={pending}>
-        {pending ? "Saving…" : submitLabel}
+        {pending ? "Mentés…" : submitLabel}
       </Button>
       {state.error ? (
         <p role="alert" className="text-sm text-negative">
@@ -35,14 +35,14 @@ export function ConfigForm({
         </p>
       ) : state.ok ? (
         <p role="status" className="text-sm text-positive">
-          Saved.
+          Mentve.
         </p>
       ) : null}
       {state.secret ? (
         <div className="rounded-md border border-warning p-3">
           <p className="text-sm">
-            Copy this key now. It will not be shown again after leaving this
-            page.
+            Másold ki most a kulcsot. Az oldal elhagyása után nem jelenik meg
+            újra.
           </p>
           <code
             className="mt-2 block break-all select-all"

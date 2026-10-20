@@ -38,14 +38,14 @@ export async function createKey(
   data: FormData,
 ): Promise<ConfigResult> {
   const ctx = await admin(data);
-  if (!ctx) return { error: "Administrator access required." };
+  if (!ctx) return { error: "Rendszergazdai jogosultság szükséges." };
   const parsed = z
     .object({
       name: z.string().trim().min(1).max(100),
       type: z.enum(["SECRET", "PUBLISHABLE"]),
     })
-    .safeParse(Object.fromEntries(data));
-  if (!parsed.success) return { error: "Choose a key name and type." };
+    .safeParse(Object.fromEntries(data), { error: z.locales.hu().localeError });
+  if (!parsed.success) return { error: "Add meg a kulcs nevét és típusát." };
   const raw = generateApiKey(parsed.data.type === "SECRET" ? "sk" : "pk");
   await db.transaction(async (tx) => {
     const [key] = await tx
@@ -77,7 +77,7 @@ export async function revokeKey(
   data: FormData,
 ): Promise<ConfigResult> {
   const ctx = await admin(data);
-  if (!ctx) return { error: "Administrator access required." };
+  if (!ctx) return { error: "Rendszergazdai jogosultság szükséges." };
   const changed = await db
     .update(apiKeys)
     .set({ revokedAt: new Date() })
@@ -88,7 +88,7 @@ export async function revokeKey(
       ),
     )
     .returning({ id: apiKeys.id });
-  if (!changed.length) return { error: "Key not found." };
+  if (!changed.length) return { error: "A kulcs nem található." };
   await db.insert(auditLogs).values({
     organizationId: ctx.organizationId,
     projectId: ctx.projectId,
@@ -106,7 +106,7 @@ export async function saveWorkspace(
   data: FormData,
 ): Promise<ConfigResult> {
   const ctx = await admin(data);
-  if (!ctx) return { error: "Administrator access required." };
+  if (!ctx) return { error: "Rendszergazdai jogosultság szükséges." };
   const parsed = z
     .object({
       organizationName: z.string().trim().min(2).max(120),
@@ -114,13 +114,13 @@ export async function saveWorkspace(
       timezone: timezoneSchema,
       baseCurrency: currencySchema,
     })
-    .safeParse(Object.fromEntries(data));
+    .safeParse(Object.fromEntries(data), { error: z.locales.hu().localeError });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   // Currency changes would relabel historical money. Keep it immutable once the project exists.
   if (parsed.data.baseCurrency !== ctx.baseCurrency)
     return {
       error:
-        "Create a separate project to use a different base currency. Historical money cannot be relabelled.",
+        "Más alappénznemhez hozz létre külön projektet. A korábbi összegek pénzneme nem írható át.",
     };
   await db.transaction(async (tx) => {
     await tx
@@ -152,7 +152,7 @@ export async function saveAttribution(
   data: FormData,
 ): Promise<ConfigResult> {
   const ctx = await admin(data);
-  if (!ctx) return { error: "Administrator access required." };
+  if (!ctx) return { error: "Rendszergazdai jogosultság szükséges." };
   const parsed = z
     .object({
       model: z.enum([
@@ -169,9 +169,9 @@ export async function saveAttribution(
     })
     .refine(
       (v) => v.firstTouchWeight + v.leadTouchWeight <= 1,
-      "Position weights must sum to at most 1.",
+      "A pozíciós súlyok összege legfeljebb 1 lehet.",
     )
-    .safeParse(Object.fromEntries(data));
+    .safeParse(Object.fromEntries(data), { error: z.locales.hu().localeError });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const [current] = await db
     .select()
@@ -184,7 +184,7 @@ export async function saveAttribution(
   )
     return {
       error:
-        "Revenue attribution uses reconciled orders; changing its event type is not supported.",
+        "A bevételi attribúció egyeztetett rendelésekből számol; az eseménytípus nem módosítható.",
     };
   const values = {
     ...parsed.data,
@@ -234,10 +234,10 @@ export async function saveIntegration(
   data: FormData,
 ): Promise<ConfigResult> {
   const ctx = await admin(data);
-  if (!ctx) return { error: "Administrator access required." };
+  if (!ctx) return { error: "Rendszergazdai jogosultság szükséges." };
   const provider = field(data, "provider");
   if (provider !== "stripe" && provider !== "webhook")
-    return { error: "Unsupported provider." };
+    return { error: "Ez a szolgáltató nem támogatott." };
   const [existing] = await db
     .select()
     .from(integrations)
@@ -255,17 +255,18 @@ export async function saveIntegration(
     } catch {
       return {
         error:
-          "Stored configuration cannot be decrypted. Restore the encryption key before editing.",
+          "A mentett beállítás nem fejthető vissza. Szerkesztés előtt állítsd helyre a titkosítási kulcsot.",
       };
     }
   }
   if (field(data, "operation") !== "disconnect") {
     const secret = field(data, "secret").trim();
     if (secret && secret.length < 8)
-      return { error: "Use a signing secret of at least 8 characters." };
+      return { error: "Legalább 8 karakteres aláírási titkot adj meg." };
     const secretKey = provider === "stripe" ? "webhookSecret" : "secret";
     if (secret) config[secretKey] = secret;
-    if (!config[secretKey]) return { error: "A signing secret is required." };
+    if (!config[secretKey])
+      return { error: "Aláírási titok megadása szükséges." };
     if (provider === "webhook") {
       try {
         const raw = field(data, "mapping").trim();
@@ -273,16 +274,18 @@ export async function saveIntegration(
           raw ? JSON.parse(raw) : config.mapping,
         );
       } catch {
-        return { error: "Provide valid JSON field mapping with event_name." };
+        return {
+          error: "Adj meg érvényes JSON-megfeleltetést az event_name mezővel.",
+        };
       }
       const header =
         field(data, "signatureHeader").trim() ||
         String(config.signatureHeader || "x-signature");
       if (!/^[a-zA-Z0-9-]+$/.test(header))
-        return { error: "Invalid signature header name." };
+        return { error: "Érvénytelen aláírási fejlécnév." };
       config.signatureHeader = header;
     }
-  } else if (!existing) return { error: "Integration not found." };
+  } else if (!existing) return { error: "Az integráció nem található." };
   const status =
     field(data, "operation") === "disconnect" ? "DISCONNECTED" : "CONNECTED";
   await db.transaction(async (tx) => {
@@ -292,7 +295,7 @@ export async function saveIntegration(
         organizationId: ctx.organizationId,
         projectId: ctx.projectId,
         provider,
-        displayName: provider === "stripe" ? "Stripe" : "Generic webhook",
+        displayName: provider === "stripe" ? "Stripe" : "Általános webhook",
         encryptedConfig: encryptSecret(JSON.stringify(config)),
         status,
       })

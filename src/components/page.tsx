@@ -1,7 +1,7 @@
 import { AlertTriangle, Info } from "lucide-react";
 
 import { Badge } from "@/components/ui/primitives";
-import { cn, formatPercent } from "@/lib/utils";
+import { cn, formatPercent, formatPointDelta } from "@/lib/utils";
 
 export function PageHeader({
   title,
@@ -13,16 +13,20 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-6 py-5">
+    <div className="flex flex-wrap items-start justify-between gap-4 border-b border-border px-4 py-7 sm:px-8 lg:px-10 lg:py-9">
       <div className="min-w-0 space-y-1">
-        <h1 className="text-base font-semibold tracking-tight">{title}</h1>
+        <h1 className="text-2xl font-semibold tracking-[-0.035em] sm:text-3xl">
+          {title}
+        </h1>
         {description ? (
-          <p className="max-w-2xl text-xs leading-relaxed text-muted-foreground">
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">
             {description}
           </p>
         ) : null}
       </div>
-      {actions ? <div className="flex items-center gap-2">{actions}</div> : null}
+      {actions ? (
+        <div className="flex flex-wrap items-center gap-2">{actions}</div>
+      ) : null}
     </div>
   );
 }
@@ -34,7 +38,16 @@ export function PageBody({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={cn("space-y-6 px-6 py-6", className)}>{children}</div>;
+  return (
+    <div
+      className={cn(
+        "mx-auto w-full max-w-[1600px] space-y-6 px-4 py-6 sm:px-8 lg:px-10 lg:py-8",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
 }
 
 /**
@@ -49,10 +62,9 @@ export function DemoDataBanner() {
     <div className="flex items-start gap-2.5 rounded-[var(--radius-card)] border border-warning/30 bg-warning-subtle px-4 py-3">
       <Info className="mt-0.5 size-4 shrink-0 text-warning" aria-hidden />
       <p className="text-xs leading-relaxed text-foreground">
-        <span className="font-medium">Demo dataset.</span> Every figure below is
-        generated sample data from <code className="font-mono">pnpm db:seed</code>,
-        not measurements of a real business. Connect a tracking source to replace
-        it.
+        <span className="font-medium">Demóadatok.</span> Az alábbi értékek
+        generált mintaadatok. Nem egy valódi vállalkozás mérései. Éles adatokhoz
+        csatlakoztass mérési forrást.
       </p>
     </div>
   );
@@ -74,7 +86,7 @@ export function DataQualityBadge({
   if (score === null) {
     return (
       <Badge tone="neutral" title={detail}>
-        Data quality unavailable
+        Az adatminőség még nem mérhető
       </Badge>
     );
   }
@@ -84,7 +96,7 @@ export function DataQualityBadge({
   return (
     <Badge tone={tone} title={detail}>
       {score >= 85 ? null : <AlertTriangle className="size-3" aria-hidden />}
-      Data quality {score}/100
+      Adatminőség {score}/100
     </Badge>
   );
 }
@@ -112,20 +124,20 @@ export function StatTile({
           : "text-muted-foreground";
 
   return (
-    <div className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3.5">
-      <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
+    <div className="rounded-[var(--radius-card)] border border-border bg-surface px-5 py-5">
+      <p className="font-mono text-[10px] font-medium tracking-[0.12em] text-muted-foreground uppercase">
         {label}
       </p>
       <p
         className={cn(
-          "tabular mt-1.5 text-xl font-semibold tracking-tight",
+          "tabular mt-3 text-[clamp(1.5rem,2.2vw,2.25rem)] font-medium leading-tight tracking-[-0.045em]",
           tone === "positive" && "text-positive",
           tone === "negative" && "text-negative",
         )}
       >
         {value}
       </p>
-      <div className="mt-1 flex items-baseline gap-1.5">
+      <div className="mt-2 flex flex-wrap items-baseline gap-1.5">
         {delta ? (
           <span className={cn("tabular text-xs font-medium", deltaTone)}>
             {delta.label}
@@ -161,8 +173,7 @@ export function RateWithTarget({
             variance >= 0 ? "text-positive" : "text-negative",
           )}
         >
-          {variance > 0 ? "+" : ""}
-          {(variance * 100).toFixed(1)} pp vs target
+          {formatPointDelta(variance)} a célhoz képest
         </span>
       )}
     </span>

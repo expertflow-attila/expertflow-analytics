@@ -1,3 +1,5 @@
+import { formatPercent } from "../utils";
+import { displayLabel } from "../labels";
 import type { Opportunity } from "./opportunity-core";
 
 /**
@@ -18,7 +20,7 @@ export type SummaryInput = {
   locale?: string;
 };
 
-function money(minor: number, currency: string, locale = "en-US"): string {
+function money(minor: number, currency: string, locale = "hu-HU"): string {
   return new Intl.NumberFormat(locale, {
     style: "currency",
     currency,
@@ -27,7 +29,7 @@ function money(minor: number, currency: string, locale = "en-US"): string {
 }
 
 export function buildExecutiveSummary(input: SummaryInput): string[] {
-  const { currency, locale = "en-US" } = input;
+  const { currency, locale = "hu-HU" } = input;
   const sentences: string[] = [];
 
   if (
@@ -37,31 +39,27 @@ export function buildExecutiveSummary(input: SummaryInput): string[] {
     const change =
       (input.netRevenueMinor - input.previousNetRevenueMinor) /
       input.previousNetRevenueMinor;
-    const direction = change >= 0 ? "up" : "down";
+    const direction = change >= 0 ? "nőtt" : "csökkent";
 
     sentences.push(
-      `Net revenue is ${direction} ${Math.abs(change * 100).toFixed(1)}% on the previous period, at ${money(input.netRevenueMinor, currency, locale)}.`,
+      `A nettó bevétel ${formatPercent(Math.abs(change))} mértékben ${direction} az előző időszakhoz képest, jelenlegi értéke ${money(input.netRevenueMinor, currency, locale)}.`,
     );
   } else {
     sentences.push(
-      `Net revenue for this period is ${money(input.netRevenueMinor, currency, locale)}.`,
+      `Az időszak nettó bevétele ${money(input.netRevenueMinor, currency, locale)}.`,
     );
   }
 
   if (input.topChannel) {
     sentences.push(
-      `The strongest contributor is ${input.topChannel.name}, credited with ${money(input.topChannel.revenueMinor, currency, locale)}.`,
+      `A legtöbb hozzárendelt bevételt hozó csatorna: ${displayLabel(input.topChannel.name)}, értéke ${money(input.topChannel.revenueMinor, currency, locale)}.`,
     );
   }
 
   const opportunity = input.biggestOpportunity;
   if (opportunity && opportunity.confidence !== "UNAVAILABLE") {
     sentences.push(
-      `The largest current opportunity is ${opportunity.nodeName}. Moving it from ` +
-        `${(opportunity.currentConversionRate * 100).toFixed(1)}% to ` +
-        `${(opportunity.targetConversionRate * 100).toFixed(1)}% would generate an estimated ` +
-        `${money(opportunity.estimatedMonthlyUpsideMinor, currency, locale)} of additional monthly revenue ` +
-        `(${opportunity.confidence.toLowerCase()} confidence).`,
+      `A legnagyobb jelenlegi lehetőség: ${opportunity.nodeName}. A konverzió ${formatPercent(opportunity.currentConversionRate)} értékről ${formatPercent(opportunity.targetConversionRate)} értékre javítása becslésünk szerint havi ${money(opportunity.estimatedMonthlyUpsideMinor, currency, locale)} többletbevételt jelentene (${displayLabel(opportunity.confidence).toLocaleLowerCase("hu-HU")} megbízhatóság).`,
     );
   }
 
@@ -69,7 +67,7 @@ export function buildExecutiveSummary(input: SummaryInput): string[] {
   // that does not say so is worse than no summary.
   if (input.trackingHealthScore !== null && input.trackingHealthScore < 85) {
     sentences.push(
-      `Tracking health is ${input.trackingHealthScore}/100, so treat the channel figures above as indicative rather than exact.`,
+      `A mérés minősége ${input.trackingHealthScore}/100, ezért a csatornák értékeit tájékoztató jellegűként kezeld.`,
     );
   }
 

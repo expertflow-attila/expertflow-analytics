@@ -32,7 +32,7 @@ import { requireOrgRole, requireUser } from "@/server/tenancy";
 
 const registerSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(8, "Use at least 8 characters"),
+  password: z.string().min(8, "Legalább 8 karaktert használj"),
   name: z.string().max(200).optional(),
 });
 
@@ -42,14 +42,17 @@ export async function registerUser(
   _prev: unknown,
   formData: FormData,
 ): Promise<ActionResult> {
-  const parsed = registerSchema.safeParse({
-    email: String(formData.get("email") ?? ""),
-    password: String(formData.get("password") ?? ""),
-    name: String(formData.get("name") ?? "") || undefined,
-  });
+  const parsed = registerSchema.safeParse(
+    {
+      email: String(formData.get("email") ?? ""),
+      password: String(formData.get("password") ?? ""),
+      name: String(formData.get("name") ?? "") || undefined,
+    },
+    { error: z.locales.hu().localeError },
+  );
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid details" };
+    return { error: parsed.error.issues[0]?.message ?? "Érvénytelen adatok" };
   }
 
   const email = parsed.data.email.toLowerCase();
@@ -63,7 +66,7 @@ export async function registerUser(
   if (existing.length > 0) {
     // Deliberately vague, so this form cannot be used to enumerate which
     // addresses already have accounts.
-    return { error: "That email cannot be used to create an account" };
+    return { error: "Ezzel az e-mail-címmel nem hozható létre fiók" };
   }
 
   await db.insert(users).values({
@@ -115,20 +118,23 @@ export async function createWorkspace(
 ): Promise<ActionResult> {
   const user = await requireUser();
 
-  const parsed = workspaceSchema.safeParse({
-    organizationName: String(formData.get("organizationName") ?? ""),
-    timezone: String(formData.get("timezone") ?? "UTC"),
-    projectName: String(formData.get("projectName") ?? ""),
-    baseCurrency: String(formData.get("baseCurrency") ?? "EUR").toUpperCase(),
-    templateKey: String(formData.get("templateKey") ?? "blank"),
-  });
+  const parsed = workspaceSchema.safeParse(
+    {
+      organizationName: String(formData.get("organizationName") ?? ""),
+      timezone: String(formData.get("timezone") ?? "UTC"),
+      projectName: String(formData.get("projectName") ?? ""),
+      baseCurrency: String(formData.get("baseCurrency") ?? "EUR").toUpperCase(),
+      templateKey: String(formData.get("templateKey") ?? "blank"),
+    },
+    { error: z.locales.hu().localeError },
+  );
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid details" };
+    return { error: parsed.error.issues[0]?.message ?? "Érvénytelen adatok" };
   }
 
   const template = getTemplate(parsed.data.templateKey);
-  if (!template) return { error: "Unknown funnel template" };
+  if (!template) return { error: "Ismeretlen tölcsérsablon" };
 
   const slug = await uniqueOrganizationSlug(
     slugify(parsed.data.organizationName),
@@ -207,7 +213,7 @@ export async function createFunnelFromTemplate(params: {
     await import("@/server/tenancy")
   ).requireProject(params.projectId, "ADMIN");
   if (organizationId !== params.organizationId)
-    throw new Error("Project not found");
+    throw new Error("A projekt nem található");
   const template = getTemplate(params.templateKey);
   if (!template) return null;
 
@@ -267,7 +273,7 @@ export async function clearDemoFlag(projectId: string): Promise<ActionResult> {
     .where(eq(projects.id, projectId))
     .limit(1);
 
-  if (!project) return { error: "Project not found" };
+  if (!project) return { error: "A projekt nem található" };
 
   const { userId } = await requireOrgRole(project.organizationId, "ADMIN");
 

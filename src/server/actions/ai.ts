@@ -28,16 +28,19 @@ export async function askAnalyst(
   formData: FormData,
 ): Promise<AskResult> {
   if (!features.aiAnalyst) {
-    return { error: "The AI Analyst is disabled for this deployment." };
+    return { error: "Az AI-elemző ebben a környezetben ki van kapcsolva." };
   }
 
-  const parsed = askSchema.safeParse({
-    question: String(formData.get("question") ?? ""),
-    conversationId: String(formData.get("conversationId") ?? "") || undefined,
-  });
+  const parsed = askSchema.safeParse(
+    {
+      question: String(formData.get("question") ?? ""),
+      conversationId: String(formData.get("conversationId") ?? "") || undefined,
+    },
+    { error: z.locales.hu().localeError },
+  );
 
   if (!parsed.success) {
-    return { error: "Ask a question of at least a few words." };
+    return { error: "Írj legalább néhány szóból álló kérdést." };
   }
 
   const ctx = await resolveProjectContext();
@@ -48,7 +51,7 @@ export async function askAnalyst(
   if (!provider) {
     return {
       error:
-        "No AI provider is configured. Set ANTHROPIC_API_KEY or OPENAI_API_KEY, or point OLLAMA_BASE_URL at a local model.",
+        "Nincs beállított AI-szolgáltató. Kérd az üzemeltetőt az Anthropic, OpenAI vagy Ollama csatlakoztatására.",
     };
   }
 
@@ -66,7 +69,7 @@ export async function askAnalyst(
         ),
       )
       .limit(1);
-    if (!conversation) return { error: "Conversation not found." };
+    if (!conversation) return { error: "A beszélgetés nem található." };
   }
 
   if (!conversationId) {
@@ -125,7 +128,7 @@ export async function askAnalyst(
       conversationId,
       role: "assistant",
       content:
-        "The AI provider could not be reached, so no answer was produced. The analytics pages are unaffected.",
+        "Az AI-szolgáltató nem érhető el, ezért nem készült válasz. Az elemzési oldalak továbbra is használhatók.",
       toolTrace: [],
     });
 

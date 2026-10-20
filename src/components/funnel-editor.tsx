@@ -1,4 +1,5 @@
 "use client";
+import { displayLabel } from "@/lib/labels";
 
 import { useState } from "react";
 import { ConfigForm } from "@/components/config-form";
@@ -28,10 +29,10 @@ export function FunnelEditor({
 }) {
   const [draft, setDraft] = useState<FunnelDraft>(
     initial ?? {
-      name: "New funnel",
+      name: "Új tölcsér",
       mode: "ORDERED",
       windowDays: 30,
-      steps: [{ name: "Landing page", eventName: "page_view", target: "" }],
+      steps: [{ name: "Érkezőoldal", eventName: "page_view", target: "" }],
     },
   );
   function update(index: number, patch: Partial<Step>) {
@@ -53,26 +54,26 @@ export function FunnelEditor({
   return (
     <details className="min-w-0 rounded-[var(--radius-card)] border bg-surface p-4">
       <summary className="cursor-pointer text-sm font-medium">
-        {initial ? "Edit funnel" : "Create funnel"}
+        {initial ? "Tölcsér szerkesztése" : "Tölcsér létrehozása"}
       </summary>
       <div className="pt-4">
-        <ConfigForm action={saveFunnel} submitLabel="Save funnel">
+        <ConfigForm action={saveFunnel} submitLabel="Tölcsér mentése">
           <input type="hidden" name="projectId" value={projectId} />
           <input type="hidden" name="funnel" value={JSON.stringify(draft)} />
           <label className="block text-xs">
-            Funnel name
+            Tölcsér neve
             <Input
-              aria-label="Funnel name"
+              aria-label="Tölcsér neve"
               required
               value={draft.name}
               onChange={(e) => setDraft({ ...draft, name: e.target.value })}
             />
           </label>
           <label className="block text-xs">
-            Matching mode
+            Egyezés módja
             <select
-              aria-label="Matching mode"
-              className="ml-2 rounded border bg-surface p-2"
+              aria-label="Egyezés módja"
+              className="mt-1 block w-full rounded-[var(--radius-control)] border bg-background p-2"
               value={draft.mode}
               onChange={(e) =>
                 setDraft({
@@ -82,14 +83,16 @@ export function FunnelEditor({
               }
             >
               {["STRICT", "ORDERED", "FLEXIBLE"].map((m) => (
-                <option key={m}>{m}</option>
+                <option key={m} value={m}>
+                  {displayLabel(m)}
+                </option>
               ))}
             </select>
           </label>
           <label className="block text-xs">
-            Conversion window (days)
+            Konverziós időablak (nap)
             <Input
-              aria-label="Conversion window (days)"
+              aria-label="Konverziós időablak (nap)"
               type="number"
               min={1}
               max={365}
@@ -101,9 +104,9 @@ export function FunnelEditor({
             />
           </label>
           <p className="text-xs text-muted-foreground">
-            Steps connect in the order below. Targets are percentages for
-            conversion to the next step; leave blank when unknown. Saving also
-            updates the canvas.
+            A lépések az alábbi sorrendben kapcsolódnak. A cél a következő
+            lépésre továbblépők százalékos aránya; ismeretlen cél esetén hagyd
+            üresen. A mentés a vásznat is frissíti.
           </p>
           <ol className="space-y-3">
             {draft.steps.map((step, i) => (
@@ -113,13 +116,13 @@ export function FunnelEditor({
                 data-testid="editable-step"
               >
                 <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span className="text-sm font-medium">Step {i + 1}</span>
+                  <span className="text-sm font-medium">Lépés {i + 1}</span>
                   <Button
                     type="button"
                     variant="ghost"
                     disabled={i === 0}
                     onClick={() => move(i, -1)}
-                    aria-label={`Move step ${i + 1} up`}
+                    aria-label={`${i + 1}. lépés felfelé`}
                   >
                     ↑
                   </Button>
@@ -128,7 +131,7 @@ export function FunnelEditor({
                     variant="ghost"
                     disabled={i === draft.steps.length - 1}
                     onClick={() => move(i, 1)}
-                    aria-label={`Move step ${i + 1} down`}
+                    aria-label={`${i + 1}. lépés lefelé`}
                   >
                     ↓
                   </Button>
@@ -143,12 +146,12 @@ export function FunnelEditor({
                       })
                     }
                   >
-                    Remove step {i + 1}
+                    Lépés törlése: {i + 1}
                   </Button>
                 </div>
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div>
-                    <Label htmlFor={`step-name-${i}`}>Name</Label>
+                    <Label htmlFor={`step-name-${i}`}>Név</Label>
                     <Input
                       id={`step-name-${i}`}
                       value={step.name}
@@ -157,7 +160,7 @@ export function FunnelEditor({
                     />
                   </div>
                   <div>
-                    <Label htmlFor={`step-event-${i}`}>Event</Label>
+                    <Label htmlFor={`step-event-${i}`}>Esemény</Label>
                     <Input
                       id={`step-event-${i}`}
                       value={step.eventName}
@@ -167,7 +170,7 @@ export function FunnelEditor({
                     />
                   </div>
                   <div>
-                    <Label htmlFor={`step-target-${i}`}>Target (%)</Label>
+                    <Label htmlFor={`step-target-${i}`}>Cél (%)</Label>
                     <Input
                       id={`step-target-${i}`}
                       type="number"
@@ -191,12 +194,12 @@ export function FunnelEditor({
                 ...draft,
                 steps: [
                   ...draft.steps,
-                  { name: "New step", eventName: "lead_created", target: "" },
+                  { name: "Új lépés", eventName: "lead_created", target: "" },
                 ],
               })
             }
           >
-            Add step
+            Lépés hozzáadása
           </Button>
         </ConfigForm>
       </div>

@@ -1,6 +1,12 @@
+import { formatRelativeChange } from "@/lib/utils";
 import { and, desc, eq, gte, lte } from "drizzle-orm";
 
-import { DemoDataBanner, PageBody, PageHeader, StatTile } from "@/components/page";
+import {
+  DemoDataBanner,
+  PageBody,
+  PageHeader,
+  StatTile,
+} from "@/components/page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState, Table, Td, Th } from "@/components/ui/primitives";
 import { formatCurrency, formatNumber, formatPercent } from "@/lib/utils";
@@ -14,7 +20,7 @@ import { db } from "@/server/db";
 import { orders, persons } from "@/server/db/schema";
 import { reconcileRevenue } from "@/server/revenue/service";
 
-export const metadata = { title: "Revenue" };
+export const metadata = { title: "Bevétel" };
 export const dynamic = "force-dynamic";
 
 export default async function RevenuePage({
@@ -58,25 +64,18 @@ export default async function RevenuePage({
     .orderBy(desc(orders.occurredAt))
     .limit(40);
 
-  const formatter = new Intl.DateTimeFormat("en-GB", {
+  const formatter = new Intl.DateTimeFormat("hu-HU", {
     dateStyle: "medium",
     timeZone: ctx.timezone,
   });
 
-  const delta = (a: number, b: number) => {
-    if (b === 0) return { label: "—", value: null };
-    const change = (a - b) / b;
-    return {
-      label: `${change > 0 ? "+" : ""}${(change * 100).toFixed(1)}%`,
-      value: change,
-    };
-  };
+  const delta = formatRelativeChange;
 
   return (
     <>
       <PageHeader
-        title="Revenue"
-        description="Canonical revenue from connected payment sources. Browser purchase events are never treated as the source of truth when a server-side record exists."
+        title="Bevétel"
+        description="A csatlakoztatott fizetési források hiteles bevétele. Ha van szerveroldali rendelés, a böngészős vásárlási eseményeket ahhoz egyeztetjük."
       />
 
       <PageBody>
@@ -84,28 +83,28 @@ export default async function RevenuePage({
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile
-            label="Gross revenue"
+            label="Bruttó bevétel"
             value={formatCurrency(current.grossRevenueMinor, ctx.baseCurrency, {
               compact: true,
             })}
             delta={delta(current.grossRevenueMinor, prior.grossRevenueMinor)}
           />
           <StatTile
-            label="Refunded"
+            label="Visszatérítések"
             value={formatCurrency(current.refundedMinor, ctx.baseCurrency, {
               compact: true,
             })}
             tone={current.refundedMinor > 0 ? "negative" : "neutral"}
           />
           <StatTile
-            label="Net revenue"
+            label="Nettó bevétel"
             value={formatCurrency(current.netRevenueMinor, ctx.baseCurrency, {
               compact: true,
             })}
             delta={delta(current.netRevenueMinor, prior.netRevenueMinor)}
           />
           <StatTile
-            label="Orders"
+            label="Rendelések"
             value={formatNumber(current.ordersCount)}
             delta={delta(current.ordersCount, prior.ordersCount)}
           />
@@ -113,15 +112,21 @@ export default async function RevenuePage({
 
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <StatTile
-            label="Average order value"
-            value={formatCurrency(current.averageOrderValueMinor, ctx.baseCurrency)}
+            label="Átlagos rendelési érték"
+            value={formatCurrency(
+              current.averageOrderValueMinor,
+              ctx.baseCurrency,
+            )}
           />
           <StatTile
-            label="Revenue per visitor"
-            value={formatCurrency(current.revenuePerVisitorMinor, ctx.baseCurrency)}
+            label="Bevétel látogatónként"
+            value={formatCurrency(
+              current.revenuePerVisitorMinor,
+              ctx.baseCurrency,
+            )}
           />
           <StatTile
-            label="MRR"
+            label="Havi ismétlődő bevétel"
             value={
               current.mrrMinor === 0
                 ? "—"
@@ -129,10 +134,10 @@ export default async function RevenuePage({
                     compact: true,
                   })
             }
-            hint={current.mrrMinor === 0 ? "no active subscriptions" : undefined}
+            hint={current.mrrMinor === 0 ? "nincs aktív előfizetés" : undefined}
           />
           <StatTile
-            label="ARR"
+            label="Éves ismétlődő bevétel"
             value={
               current.mrrMinor === 0
                 ? "—"
@@ -145,23 +150,23 @@ export default async function RevenuePage({
 
         <Card>
           <CardHeader>
-            <CardTitle>Reconciliation</CardTitle>
+            <CardTitle>Bevétel-egyeztetés</CardTitle>
           </CardHeader>
           <CardContent>
             {reconciliation.browserPurchaseEvents === 0 &&
             reconciliation.canonicalOrders === 0 ? (
               <p className="text-xs text-muted-foreground">
-                Nothing to reconcile in this period.
+                Ebben az időszakban nincs egyeztethető adat.
               </p>
             ) : (
               <>
                 <div className="grid gap-4 sm:grid-cols-3">
                   <div>
                     <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
-                      Provider records
+                      Fizetési szolgáltató adatai
                     </p>
                     <p className="tabular mt-1 text-sm font-medium">
-                      {formatNumber(reconciliation.canonicalOrders)} orders ·{" "}
+                      {formatNumber(reconciliation.canonicalOrders)} rendelés ·{" "}
                       {formatCurrency(
                         reconciliation.canonicalRevenueMinor,
                         ctx.baseCurrency,
@@ -171,10 +176,11 @@ export default async function RevenuePage({
                   </div>
                   <div>
                     <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
-                      Browser events
+                      Böngészős események
                     </p>
                     <p className="tabular mt-1 text-sm font-medium">
-                      {formatNumber(reconciliation.browserPurchaseEvents)} events ·{" "}
+                      {formatNumber(reconciliation.browserPurchaseEvents)}{" "}
+                      esemény ·{" "}
                       {formatCurrency(
                         reconciliation.browserRevenueMinor,
                         ctx.baseCurrency,
@@ -184,7 +190,7 @@ export default async function RevenuePage({
                   </div>
                   <div>
                     <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
-                      Match rate
+                      Egyezési arány
                     </p>
                     <p className="tabular mt-1 text-sm font-medium">
                       {reconciliation.matchRate === null
@@ -200,15 +206,17 @@ export default async function RevenuePage({
                     {reconciliation.browserEventsWithoutOrder > 0 ? (
                       <li className="text-muted-foreground">
                         <span className="font-medium text-foreground">
-                          {formatNumber(reconciliation.browserEventsWithoutOrder)}
+                          {formatNumber(
+                            reconciliation.browserEventsWithoutOrder,
+                          )}
                         </span>{" "}
-                        browser purchase{" "}
+                        böngészős vásárlási{" "}
                         {reconciliation.browserEventsWithoutOrder === 1
-                          ? "event has"
-                          : "events have"}{" "}
-                        no matching provider record within 24 hours. Either the
-                        payment never completed, or the buyer was not identified
-                        at checkout.
+                          ? "eseményhez"
+                          : "eseményhez"}{" "}
+                        nem találtunk fizetési rekordot 24 órán belül. Lehet,
+                        hogy a fizetés nem fejeződött be, vagy a vevőt nem
+                        azonosították a pénztárnál.
                       </li>
                     ) : null}
                     {reconciliation.ordersWithoutPerson > 0 ? (
@@ -216,25 +224,26 @@ export default async function RevenuePage({
                         <span className="font-medium text-foreground">
                           {formatNumber(reconciliation.ordersWithoutPerson)}
                         </span>{" "}
-                        provider{" "}
+                        szolgáltatói{" "}
                         {reconciliation.ordersWithoutPerson === 1
-                          ? "order could"
-                          : "orders could"}{" "}
-                        not be matched to a person, so{" "}
+                          ? "rendelést"
+                          : "rendelést"}{" "}
+                        nem sikerült személyhez kapcsolni, ezért{" "}
                         {reconciliation.ordersWithoutPerson === 1
-                          ? "it is"
-                          : "they are"}{" "}
-                        excluded from attribution and LTV.
+                          ? "az"
+                          : "azok"}{" "}
+                        kimaradnak az attribúcióból és az
+                        ügyfélérték-számításból.
                       </li>
                     ) : null}
                   </ul>
                 ) : null}
 
                 <p className="mt-3 text-2xs leading-relaxed text-subtle-foreground">
-                  Where a payment provider is connected its record is canonical.
-                  Browser purchase events are compared against it rather than
-                  trusted: an ad blocker or closed tab loses one, a double-fired
-                  tag invents one.
+                  Csatlakoztatott fizetési szolgáltatónál annak rekordja a
+                  hiteles forrás. A böngészős eseményeket ehhez egyeztetjük: a
+                  blokkolók és a bezárt lapok hiányt, a többször lefutó mérőkód
+                  duplikációt okozhat.
                 </p>
               </>
             )}
@@ -243,24 +252,24 @@ export default async function RevenuePage({
 
         <Card>
           <CardHeader>
-            <CardTitle>Recent orders</CardTitle>
+            <CardTitle>Legutóbbi rendelések</CardTitle>
           </CardHeader>
           <CardContent>
             {recent.length === 0 ? (
               <EmptyState
-                title="No revenue recorded in this period"
-                description="Connect Stripe, post orders to the events API, or import a CSV so revenue can be joined to customer journeys."
+                title="Nincs rögzített bevétel az időszakban"
+                description="Csatlakoztasd a Stripe-ot, vagy küldj rendelési eseményeket az API-ra, hogy a bevételt az ügyfélutakhoz kapcsolhassuk."
               />
             ) : (
               <Table>
                 <thead>
                   <tr>
-                    <Th>Date</Th>
-                    <Th>Customer</Th>
-                    <Th>Product</Th>
-                    <Th>Source</Th>
-                    <Th className="text-right">Gross</Th>
-                    <Th className="text-right">Net</Th>
+                    <Th>Dátum</Th>
+                    <Th>Ügyfél</Th>
+                    <Th>Termék</Th>
+                    <Th>Forrás</Th>
+                    <Th className="text-right">Bruttó</Th>
+                    <Th className="text-right">Nettó</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -277,7 +286,7 @@ export default async function RevenuePage({
                           </a>
                         ) : (
                           <span className="text-subtle-foreground">
-                            unmatched
+                            nincs egyezés
                           </span>
                         )}
                       </Td>

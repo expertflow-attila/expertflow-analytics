@@ -5,7 +5,9 @@ async function login(page) {
   await page.goto("/login");
   await page.locator("#email").fill("demo@funnelintelligence.dev");
   await page.locator("#password").fill("demo1234");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Bejelentkezés", exact: true })
+    .click();
   await page.waitForURL(/overview/);
 }
 test("mobile journey must fit viewport", async ({ page }) => {
@@ -19,11 +21,12 @@ test("mobile journey must fit viewport", async ({ page }) => {
 test("mobile must allow settings navigation and logout", async ({ page }) => {
   await login(page);
   await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Menü megnyitása" }).click();
   await expect(
-    page.getByRole("link", { name: "Settings", exact: true }),
+    page.getByRole("link", { name: "Beállítások", exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: "Sign out", exact: true }),
+    page.getByRole("link", { name: "Kijelentkezés", exact: true }),
   ).toBeVisible();
 });
 test("unsupported range must safely default", async ({ page }) => {
@@ -39,11 +42,16 @@ test("unsupported range must safely default", async ({ page }) => {
 test("funnel node selection works after zoom to fit", async ({ page }) => {
   await login(page);
   await page.goto("/funnels");
-  const control = page.getByRole("button", { name: "Zoom In", exact: true });
-  const colors = await control.evaluate(el => ({ background: getComputedStyle(el).backgroundColor, foreground: getComputedStyle(el).color }));
-  expect(colors.background).toBe("rgb(18, 18, 20)");
+  const control = page.getByRole("button", { name: "Nagyítás", exact: true });
+  const colors = await control.evaluate((el) => ({
+    background: getComputedStyle(el).backgroundColor,
+    foreground: getComputedStyle(el).color,
+  }));
+  expect(colors.background).toBe("rgb(18, 18, 18)");
   expect(colors.foreground).not.toBe(colors.background);
-  await page.getByRole("button", { name: "Fit View", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Nézet igazítása", exact: true })
+    .click();
   await page
     .locator(".react-flow__node button")
     .first()

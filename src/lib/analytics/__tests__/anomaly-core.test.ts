@@ -28,7 +28,7 @@ describe("tracking health", () => {
     // Every check is a ratio, and every ratio over zero is zero, so a naive
     // implementation awards a perfect score to a project holding no data.
     expect(result.score).toBeNull();
-    expect(result.unavailableReason).toMatch(/no events/i);
+    expect(result.unavailableReason).toMatch(/nem érkeztek események/i);
     expect(result.checks).toHaveLength(0);
   });
 
@@ -45,7 +45,9 @@ describe("tracking health", () => {
       purchasesWithoutPerson: 40,
     });
 
-    const check = result.checks.find((c) => c.key === "purchase_reconciliation");
+    const check = result.checks.find(
+      (c) => c.key === "purchase_reconciliation",
+    );
     expect(check?.status).toBe("FAIL");
     expect(result.score).toBe(75);
   });
@@ -92,7 +94,9 @@ describe("anomaly detection", () => {
 
   it("ignores a large move that sits within normal variance", () => {
     // Swings between 50 and 150 every day; another 150 is not news.
-    const values = Array.from({ length: 40 }, (_, i) => (i % 2 === 0 ? 50 : 150));
+    const values = Array.from({ length: 40 }, (_, i) =>
+      i % 2 === 0 ? 50 : 150,
+    );
     values[39] = 150;
 
     expect(detectAnomalies("revenue", series(values))).toHaveLength(0);

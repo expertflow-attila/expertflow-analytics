@@ -9,7 +9,7 @@ export function Input({
   return (
     <input
       className={cn(
-        "h-9 w-full rounded-md border border-border bg-surface px-3 text-sm",
+        "h-10 min-w-0 w-full rounded-[var(--radius-control)] border border-border bg-background px-3 text-sm",
         "placeholder:text-subtle-foreground disabled:opacity-50",
         className,
       )}
@@ -101,7 +101,7 @@ export function Table({
   ...props
 }: React.TableHTMLAttributes<HTMLTableElement>) {
   return (
-    <div className="w-full overflow-x-auto">
+    <div className="w-full min-w-0 overflow-x-auto">
       <table
         className={cn("w-full border-collapse text-sm", className)}
         {...props}
@@ -117,7 +117,7 @@ export function Th({
   return (
     <th
       className={cn(
-        "border-b border-border px-3 py-2 text-left text-2xs font-medium tracking-wide text-muted-foreground uppercase",
+        "border-b border-border px-3 py-2 text-left font-mono text-[10px] font-medium tracking-[0.1em] text-muted-foreground uppercase",
         className,
       )}
       {...props}
@@ -133,7 +133,7 @@ export function Td({
   return (
     <td
       className={cn(
-        "border-b border-border px-3 py-2.5",
+        "border-b border-border px-3 py-3.5",
         numeric && "tabular text-right",
         className,
       )}

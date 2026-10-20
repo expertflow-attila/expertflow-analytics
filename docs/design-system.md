@@ -1,42 +1,33 @@
-# Business Native analytics UI
+# Business Native – Analitikai rutin
 
-## Scope and reference
+## Alap és ellenőrzési határ
 
-This is the redesign of the existing sample-data dashboard, not the missing Funnel Intelligence OS v2 application. The user approved this UI work separately from the paused full product implementation.
+Az alkalmazás közös megjelenési alapja a korábban jóváhagyott Business Native paletta és tipográfia: sötét felület, krémszínű szöveg, levendula kiemelés, Geist és Geist Mono. A bal felső részen kizárólag a `business native` szólogó és az `ANALITIKAI RUTIN` alcím szerepel; nincs `bn.` monogram.
 
-The palette and typefaces come from the Business Native tokens already present in this repository. The live businessnative.hu website could not be inspected from this environment (proxy HTTP 403), so exact parity with its current design system remains unverified. Compare against the live site before claiming brand approval.
+A 2026. október 20-i módosítás az adatbázis-alapú alkalmazás egészére vonatkozik, nem a korábbi statikus mintadashboardra. A businessnative.hu aktuális oldalát a környezet hálózati szabályai blokkolták. A domaint kiszolgáló `businessnative-v2` projektet sikerült azonosítani, de a külön projekt dizájnfájljainak olvasásához az automatikus jóváhagyási ellenőrzés további felhasználói engedélyt kért. Az aktuális weboldallal való teljes egyezés ezért még nem igazolt.
 
-## Visual rules
+A businessnative.hu és www.businessnative.hu domainek hozzáadása mentett környezeti konfigurációtervezet; a tervezet mentése nem jelent futásidejű aktiválást. Ehhez a környezeti beállítások mentése és közzététele szükséges.
 
-The user accepted the redesign and explicitly removed the upper-left `bn.` monogram. Keep only the `business native` wordmark and `ANALITIKAI RUTIN` subtitle. In the compact tablet layout the wordmark moves to the topbar.
+## Közös elemek
 
-- Dark background `#0a0a0b`, warm foreground `#f6f3ec`, card `#121212`, lavender accent `#c0c0e7`.
-- Light mode uses warm off-white backgrounds and a darker lavender plot color for legibility.
-- Geist for headings, interface text and key values. Geist Mono for dates, small category labels and chart axes.
-- Numbers use tabular figures, Hungarian formatting, explicit digit grouping and a decimal comma. KPI values are approximately 32–39px; headings 26–36px.
-- Panel radius 12px, control radius approximately 8px, chart details 3–4px. Subtle borders, restrained accent fills, no grain overlay or content-hidden-on-scroll animation.
-- Desktop sidebar 224px; tablet icon navigation; mobile horizontally scrollable, labelled navigation. Tables scroll inside their panel rather than widening the page.
-- Layout order: overview metrics → traffic and sources → funnel → pages → filtered audience details → events → planned measurement tools.
+- Háttér: `#0a0a0b`; kártya: `#121212`; szöveg: `#f6f3ec`; kiemelés: `#c0c0e7`.
+- Geist: navigáció, címsor, törzsszöveg, számértékek. Geist Mono: kategóriacímkék, táblázatfejlécek, technikai azonosítók.
+- A betűtípus-változók a HTML gyökérelemen vannak, hogy a Tailwind témaváltozói is elérjék őket. Így nem esik vissza a felület rendszerbetűre.
+- Kártyasugár: 12 px; beviteli mező és gomb: 8 px. Diszkrét keretek, azonos felület- és állapotszínek.
+- Címsor: 24–30 px; fő mutatók: 24–36 px; számoszlopok: tabuláris számjegyek.
+- Magyar szám-, százalék-, pénznem-, időtartam- és dátumformátum. A pénzügyi számítás továbbra is a legkisebb pénzegységekben történik.
+- Asztali nézetben rögzített oldalsó navigáció; mobilon nyitható, feliratozott menü, teljes navigációval és kijelentkezéssel.
+- Közös `Brand` és `AuthShell` a belépés, regisztráció, jelszókezelés, kijelentkezés és a nem található oldal számára.
+- Látható billentyűzetfókusz, tartalomra ugró hivatkozás, képernyőolvasóval azonosítható menü és magyar vászonvezérlők.
 
-## Interaction and data honesty
+## Magyar felület
 
-- All displayed data remains illustrative. The sample date range is derived from the supplied data, not labelled as current traffic.
-- Traffic chart switches between pageviews and visitors, supports pointer inspection, and has an expandable HTML data table for keyboard/touch access.
-- Page-row links select the appropriate page and navigate to audience details. The filter affects the detailed sources/devices/browsers/subpages/events panels. The overview and city data remain explicitly labelled as all-page values.
-- The funnel is an independent sample dataset; its drop-off note is calculated from those funnel values. It is not presented as a joined analysis of the overview dataset.
-- Google Analytics and Plausible are labelled as planned, unconnected integrations; no fake connection action is shown.
-- Theme switching persists via the existing theme provider. Controls have focus outlines and accessible names, including collapsed sidebar links. Reduced-motion preferences are respected.
+A menük, űrlapok, súgók, szerveroldali validációk, állapotok, üres nézetek, determinisztikus összefoglalók és AI-kérdésjavaslatok magyarul jelennek meg. Az AI rendszerutasítása magyar választ kér, de ez élő modellteszt nélkül nem bizonyítja egy külső szolgáltató minden válaszának nyelvét.
 
-## Validation
+A tárolt enumok, eseményazonosítók, API-mezők és végpontok nem változtak. A rendszer címkéit a `src/lib/labels.ts` jeleníti meg magyarul. A felhasználói projektneveket, termékneveket és már mentett tölcsérneveket nem írjuk át; ezért egy korábbi angol nevű demóadat továbbra is angol lehet. Az új beépített tölcsérsablonok nevei magyarok.
 
-The redesign was checked with Playwright at 320, 390, 768, 1024, 1440 and 1920px widths. Checks cover document overflow, chart switching, its 45-day data table, page selection/reset, theme persistence and browser runtime errors. These are targeted UI checks, not proof of Funnel Intelligence OS functionality.
+## Ellenőrzés
 
-In this cloud environment, Next.js font downloads require the system trust store:
+A `evals/localization.spec.cjs` a belépési és hibaoldalak magyar szövegét, a tényleges Geist betűcsaládot, a kártyasugarat, valamint a mobilos navigáció és kijelentkezés teljes folyamatát vizsgálja. A `evals/audit.spec.cjs` az összes analitikai oldalt ellenőrzi, és 390/320 px szélességnél az oldalszintű túlcsordulásra is hibát jelez. A hitelesítési oldalak 320, 390, 768 és 1440 px szélességgel szerepelnek az ellenőrzésben.
 
-```sh
-NEXT_TURBOPACK_EXPERIMENTAL_USE_SYSTEM_TLS_CERTS=1 npm run build
-```
-
-This preserves TLS verification. Do not disable certificate verification or replace actual fonts with mocks to pass the build. Both Geist and Geist Mono were verified as loaded in Chromium.
-
-Local review artifacts and the Playwright script are under `/workspace/design-review/`. The handoff document is `/workspace/handoff/GROGBOT-ATADAS.md`. Those directories are outside the Git checkout and need to be transferred separately if required. No push or deployment is implied by this work.
+A képernyőképek és nyomkövetések az ignorált `evals/artifacts/` mappába kerülnek; éles titkokat és felhasználói munkameneteket nem tárolunk a tárolóban. A helyi tesztek eredménye nem helyettesíti az éles telepítés ellenőrzését.

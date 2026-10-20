@@ -7,12 +7,12 @@ export const timezoneSchema = z
   .max(64)
   .refine((value) => {
     try {
-      new Intl.DateTimeFormat("en", { timeZone: value }).format();
+      new Intl.DateTimeFormat("hu", { timeZone: value }).format();
       return true;
     } catch {
       return false;
     }
-  }, "Choose a valid IANA timezone, for example Europe/Budapest.");
+  }, "Adj meg érvényes IANA-időzónát, például Europe/Budapest.");
 
 export const currencySchema = z
   .string()
@@ -20,5 +20,5 @@ export const currencySchema = z
   .toUpperCase()
   .refine(
     (value) => Intl.supportedValuesOf("currency").includes(value),
-    "Choose a valid ISO currency, for example EUR or HUF.",
+    "Adj meg érvényes ISO-pénznemet, például EUR vagy HUF.",
   );

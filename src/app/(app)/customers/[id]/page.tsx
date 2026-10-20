@@ -1,3 +1,4 @@
+import { displayLabel } from "@/lib/labels";
 import { notFound } from "next/navigation";
 
 import { DemoDataBanner, PageBody, PageHeader } from "@/components/page";
@@ -26,7 +27,7 @@ export default async function CustomerPage({
   if (!data) notFound();
 
   const { person, timeline, touchpoints, orders } = data;
-  const formatter = new Intl.DateTimeFormat("en-GB", {
+  const formatter = new Intl.DateTimeFormat("hu-HU", {
     dateStyle: "medium",
     timeStyle: "short",
     timeZone: ctx.timezone,
@@ -37,7 +38,7 @@ export default async function CustomerPage({
       <PageHeader
         title={person.name ?? person.email ?? person.id}
         description={
-          person.email && person.name ? person.email : `Person ${person.id}`
+          person.email && person.name ? person.email : `Személy: ${person.id}`
         }
       />
 
@@ -46,7 +47,7 @@ export default async function CustomerPage({
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3">
             <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
-              Lifetime revenue
+              Teljes ügyfélbevétel
             </p>
             <p className="tabular mt-1 text-lg font-semibold">
               {formatCurrency(person.lifetimeRevenueMinor, ctx.baseCurrency)}
@@ -54,7 +55,7 @@ export default async function CustomerPage({
           </div>
           <div className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3">
             <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
-              First seen
+              Első aktivitás
             </p>
             <p className="mt-1 text-sm">
               {person.firstSeenAt ? formatter.format(person.firstSeenAt) : "—"}
@@ -62,7 +63,7 @@ export default async function CustomerPage({
           </div>
           <div className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3">
             <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
-              Orders
+              Rendelések
             </p>
             <p className="tabular mt-1 text-lg font-semibold">
               {orders.length}
@@ -73,19 +74,19 @@ export default async function CustomerPage({
         <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
           <Card>
             <CardHeader>
-              <CardTitle>Timeline</CardTitle>
+              <CardTitle>Idővonal</CardTitle>
             </CardHeader>
             <CardContent>
               {timeline.length === 0 ? (
                 <EmptyState
-                  title="No events recorded"
-                  description="This person has no events in the retention window."
+                  title="Nincs rögzített esemény"
+                  description="Ehhez a személyhez nincs esemény a megőrzési időszakban."
                 />
               ) : (
                 <ol className="relative space-y-4 border-l border-border pl-5">
                   {timeline.map((event, index) => (
                     <li
-                      key={`${event.eventName}-${index}`}
+                      key={`${displayLabel(event.eventName)}-${index}`}
                       className="relative"
                     >
                       <span
@@ -129,12 +130,12 @@ export default async function CustomerPage({
           <div className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle>Touchpoints</CardTitle>
+                <CardTitle>Érintési pontok</CardTitle>
               </CardHeader>
               <CardContent>
                 {touchpoints.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    No marketing touchpoints recorded.
+                    Nincsenek rögzített marketingérintések.
                   </p>
                 ) : (
                   <ul className="space-y-2">
@@ -142,10 +143,10 @@ export default async function CustomerPage({
                       <li key={touchpoint.id} className="text-xs">
                         <div className="flex items-baseline justify-between gap-2">
                           <span className="font-medium">
-                            {touchpoint.channel}
+                            {displayLabel(touchpoint.channel)}
                           </span>
                           {touchpoint.isLeadConversion === "true" ? (
-                            <Badge tone="accent">lead</Badge>
+                            <Badge tone="accent">érdeklődő</Badge>
                           ) : null}
                         </div>
                         <p className="text-muted-foreground">
@@ -163,12 +164,12 @@ export default async function CustomerPage({
 
             <Card>
               <CardHeader>
-                <CardTitle>Orders</CardTitle>
+                <CardTitle>Rendelések</CardTitle>
               </CardHeader>
               <CardContent>
                 {orders.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
-                    No purchases recorded.
+                    Nincs rögzített vásárlás.
                   </p>
                 ) : (
                   <ul className="space-y-2">
@@ -178,7 +179,7 @@ export default async function CustomerPage({
                         className="flex items-baseline justify-between gap-2 text-xs"
                       >
                         <span className="min-w-0 truncate">
-                          {order.productName ?? "Purchase"}
+                          {order.productName ?? "Vásárlás"}
                         </span>
                         <span className="tabular shrink-0 font-medium">
                           {formatCurrency(order.grossMinor, order.currency)}

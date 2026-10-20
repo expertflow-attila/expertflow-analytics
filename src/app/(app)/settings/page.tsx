@@ -1,3 +1,4 @@
+import { displayLabel } from "@/lib/labels";
 import { eq } from "drizzle-orm";
 
 import { PageBody, PageHeader } from "@/components/page";
@@ -15,15 +16,15 @@ import {
   projects,
 } from "@/server/db/schema";
 
-export const metadata = { title: "Settings" };
+export const metadata = { title: "Beállítások" };
 export const dynamic = "force-dynamic";
 
 const RETENTION_LABELS: Record<string, string> = {
-  DAYS_30: "30 days",
-  DAYS_90: "90 days",
-  DAYS_180: "180 days",
-  DAYS_365: "365 days",
-  UNLIMITED: "Unlimited",
+  DAYS_30: "30 nap",
+  DAYS_90: "90 nap",
+  DAYS_180: "180 nap",
+  DAYS_365: "365 nap",
+  UNLIMITED: "Korlátlan",
 };
 
 export default async function SettingsPage() {
@@ -48,42 +49,45 @@ export default async function SettingsPage() {
     .limit(1);
 
   const rows: Array<{ label: string; value: string; note?: string }> = [
-    { label: "Organization", value: organization.name },
+    { label: "Szervezet", value: organization.name },
     {
-      label: "Timezone",
+      label: "Időzóna",
       value: organization.timezone,
-      note: "All day bucketing uses this, never the viewer's browser.",
+      note: "A napi összesítések ezt használják, nem a megtekintő böngészőjének időzónáját.",
     },
-    { label: "Project", value: project.name },
+    { label: "Projekt", value: project.name },
     {
-      label: "Base currency",
+      label: "Alappénznem",
       value: project.baseCurrency,
-      note: "Events in another currency are flagged, never silently converted.",
+      note: "Az eltérő pénznemű eseményeket jelezzük, automatikus átváltás nélkül.",
     },
     {
-      label: "Data retention",
+      label: "Adatmegőrzés",
       value: RETENTION_LABELS[project.dataRetention] ?? project.dataRetention,
     },
-    { label: "Your role", value: ctx.role },
+    { label: "Jogosultságod", value: displayLabel(ctx.role) },
   ];
 
   return (
     <>
       <PageHeader
-        title="Settings"
-        description="Configuration that changes how every number in this product is calculated."
+        title="Beállítások"
+        description="A mutatók számítását meghatározó beállítások."
       />
 
       <PageBody>
         {ctx.role === "OWNER" || ctx.role === "ADMIN" ? (
           <Card>
             <CardHeader>
-              <CardTitle>Edit workspace</CardTitle>
+              <CardTitle>Munkaterület szerkesztése</CardTitle>
             </CardHeader>
             <CardContent>
-              <ConfigForm action={saveWorkspace} submitLabel="Save workspace">
+              <ConfigForm
+                action={saveWorkspace}
+                submitLabel="Munkaterület mentése"
+              >
                 <input type="hidden" name="projectId" value={ctx.projectId} />
-                <Label htmlFor="organizationName">Organization name</Label>
+                <Label htmlFor="organizationName">Szervezet neve</Label>
                 <Input
                   id="organizationName"
                   name="organizationName"
@@ -91,7 +95,7 @@ export default async function SettingsPage() {
                   required
                   minLength={2}
                 />
-                <Label htmlFor="projectName">Project name</Label>
+                <Label htmlFor="projectName">Projekt neve</Label>
                 <Input
                   id="projectName"
                   name="projectName"
@@ -99,14 +103,14 @@ export default async function SettingsPage() {
                   required
                   minLength={2}
                 />
-                <Label htmlFor="timezone">Timezone</Label>
+                <Label htmlFor="timezone">Időzóna</Label>
                 <Input
                   id="timezone"
                   name="timezone"
                   defaultValue={organization.timezone}
                   required
                 />
-                <Label htmlFor="baseCurrency">Base currency (fixed)</Label>
+                <Label htmlFor="baseCurrency">Alappénznem (rögzített)</Label>
                 <Input
                   id="baseCurrency"
                   name="baseCurrency"
@@ -114,8 +118,8 @@ export default async function SettingsPage() {
                   readOnly
                 />
                 <p className="text-xs text-muted-foreground">
-                  A different currency needs a separate project so historical
-                  amounts keep their meaning.
+                  Más pénznemhez külön projekt szükséges, hogy a korábbi
+                  összegek jelentése megmaradjon.
                 </p>
               </ConfigForm>
             </CardContent>
@@ -124,15 +128,15 @@ export default async function SettingsPage() {
         {(ctx.role === "OWNER" || ctx.role === "ADMIN") && attribution ? (
           <Card>
             <CardHeader>
-              <CardTitle>Edit attribution</CardTitle>
+              <CardTitle>Attribúció szerkesztése</CardTitle>
             </CardHeader>
             <CardContent>
               <ConfigForm
                 action={saveAttribution}
-                submitLabel="Save attribution"
+                submitLabel="Attribúció mentése"
               >
                 <input type="hidden" name="projectId" value={ctx.projectId} />
-                <Label htmlFor="model">Model</Label>
+                <Label htmlFor="model">Modell</Label>
                 <select
                   id="model"
                   name="model"
@@ -146,10 +150,12 @@ export default async function SettingsPage() {
                     "U_SHAPED",
                     "POSITION_BASED",
                   ].map((m) => (
-                    <option key={m}>{m}</option>
+                    <option key={m} value={m}>
+                      {displayLabel(m)}
+                    </option>
                   ))}
                 </select>
-                <Label htmlFor="windowDays">Attribution window (days)</Label>
+                <Label htmlFor="windowDays">Attribúciós időablak (nap)</Label>
                 <Input
                   id="windowDays"
                   name="windowDays"
@@ -160,7 +166,7 @@ export default async function SettingsPage() {
                   required
                 />
                 <Label htmlFor="revenueEventName">
-                  Revenue event (reconciled orders)
+                  Bevételi esemény (egyeztetett rendelések)
                 </Label>
                 <Input
                   id="revenueEventName"
@@ -169,7 +175,7 @@ export default async function SettingsPage() {
                   readOnly
                 />
                 <Label htmlFor="firstTouchWeight">
-                  First touch weight (position-based model)
+                  Első érintés súlya (pozícióalapú modell)
                 </Label>
                 <Input
                   id="firstTouchWeight"
@@ -182,7 +188,7 @@ export default async function SettingsPage() {
                   required
                 />
                 <Label htmlFor="leadTouchWeight">
-                  Lead touch weight (position-based model)
+                  Érdeklődővé válás súlya (pozícióalapú modell)
                 </Label>
                 <Input
                   id="leadTouchWeight"
@@ -200,7 +206,7 @@ export default async function SettingsPage() {
                     type="checkbox"
                     defaultChecked={attribution.includeDirect === "true"}
                   />{" "}
-                  Include direct and unknown
+                  Közvetlen és ismeretlen forgalom beszámítása
                 </label>
                 <label className="block text-sm">
                   <input
@@ -208,7 +214,7 @@ export default async function SettingsPage() {
                     type="checkbox"
                     defaultChecked={attribution.includeOrganic === "true"}
                   />{" "}
-                  Include organic
+                  Organikus forgalom beszámítása
                 </label>
               </ConfigForm>
             </CardContent>
@@ -216,7 +222,7 @@ export default async function SettingsPage() {
         ) : null}
         <Card>
           <CardHeader>
-            <CardTitle>Workspace</CardTitle>
+            <CardTitle>Munkaterület</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="space-y-3">
@@ -242,24 +248,26 @@ export default async function SettingsPage() {
         {attribution ? (
           <Card>
             <CardHeader>
-              <CardTitle>Attribution</CardTitle>
+              <CardTitle>Attribúció</CardTitle>
             </CardHeader>
             <CardContent>
               <dl className="space-y-2">
                 {[
-                  { label: "Model", value: attribution.model },
-                  { label: "Window", value: `${attribution.windowDays} days` },
+                  { label: "Modell", value: displayLabel(attribution.model) },
+                  { label: "Időablak", value: `${attribution.windowDays} nap` },
                   {
-                    label: "Revenue event",
+                    label: "Bevételi esemény",
                     value: attribution.revenueEventName,
                   },
                   {
-                    label: "Include direct and unknown",
-                    value: attribution.includeDirect === "true" ? "Yes" : "No",
+                    label: "Közvetlen és ismeretlen forgalom beszámítása",
+                    value:
+                      attribution.includeDirect === "true" ? "Igen" : "Nem",
                   },
                   {
-                    label: "Include organic",
-                    value: attribution.includeOrganic === "true" ? "Yes" : "No",
+                    label: "Organikus forgalom beszámítása",
+                    value:
+                      attribution.includeOrganic === "true" ? "Igen" : "Nem",
                   },
                 ].map((row) => (
                   <div
@@ -279,27 +287,27 @@ export default async function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Data source</CardTitle>
+            <CardTitle>Adatforrás</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex items-center gap-2">
               <Badge
                 tone={project.settings?.demoDataset ? "warning" : "positive"}
               >
-                {project.settings?.demoDataset ? "Demo dataset" : "Live data"}
+                {project.settings?.demoDataset ? "Demóadatok" : "Éles adatok"}
               </Badge>
             </div>
             <p className="text-xs leading-relaxed text-muted-foreground">
               {project.settings?.demoDataset
-                ? "This project holds generated sample data. Every analytics screen labels it as such. The flag is cleared deliberately, not automatically, so real and sample data can never be confused."
-                : "This project reports measured data only."}
+                ? "Ez a projekt generált mintaadatokat tartalmaz, amit minden elemzési oldal jelez. A demójelölés csak kifejezett művelettel szűnik meg, hogy a mintaadatok és az éles mérések elkülönüljenek."
+                : "Ez a projekt kizárólag mért adatokat mutat."}
             </p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Feature flags</CardTitle>
+            <CardTitle>Elérhető funkciók</CardTitle>
           </CardHeader>
           <CardContent>
             <dl className="space-y-2">
@@ -308,17 +316,19 @@ export default async function SettingsPage() {
                   key={key}
                   className="flex items-baseline justify-between gap-4"
                 >
-                  <dt className="text-xs text-muted-foreground">{key}</dt>
+                  <dt className="text-xs text-muted-foreground">
+                    {displayLabel(key)}
+                  </dt>
                   <dd>
                     <Badge tone={enabled ? "positive" : "neutral"}>
-                      {enabled ? "on" : "off"}
+                      {enabled ? "bekapcsolva" : "kikapcsolva"}
                     </Badge>
                   </dd>
                 </div>
               ))}
             </dl>
             <p className="mt-3 text-2xs text-subtle-foreground">
-              Set through environment variables; see .env.example.
+              A funkciókat az üzemeltető állítja be a környezeti változókkal.
             </p>
           </CardContent>
         </Card>

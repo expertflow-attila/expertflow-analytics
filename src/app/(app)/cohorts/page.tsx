@@ -1,3 +1,4 @@
+import { displayLabel } from "@/lib/labels";
 import Link from "next/link";
 
 import { DemoDataBanner, PageBody, PageHeader } from "@/components/page";
@@ -5,10 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, EmptyState, Table, Td, Th } from "@/components/ui/primitives";
 import { calculateCohorts, LTV_HORIZONS } from "@/lib/analytics/ltv-core";
 import { formatCurrency } from "@/lib/utils";
-import { isDemoDataset, resolveProjectContext } from "@/server/analytics/context";
+import {
+  isDemoDataset,
+  resolveProjectContext,
+} from "@/server/analytics/context";
 import { loadCustomers } from "@/server/analytics/queries";
 
-export const metadata = { title: "Cohorts & LTV" };
+export const metadata = { title: "Kohorszok és ügyfélérték" };
 export const dynamic = "force-dynamic";
 
 export default async function CohortsPage({
@@ -27,13 +31,13 @@ export default async function CohortsPage({
   return (
     <>
       <PageHeader
-        title="Cohorts & LTV"
-        description="Cumulative net revenue per acquired customer, measured at fixed day offsets. A horizon shows a value only once it has fully elapsed for that cohort."
+        title="Kohorszok és ügyfélérték"
+        description="A megszerzett ügyfelekre jutó összesített nettó bevétel, rögzített napeltolásokkal. Csak a kohorsz minden tagjánál már lezárult időtávhoz jelenik meg érték."
         actions={
           <div className="flex gap-1">
             {[
-              { key: "month", label: "By month" },
-              { key: "channel", label: "By channel" },
+              { key: "month", label: "Hónap szerint" },
+              { key: "channel", label: "Csatorna szerint" },
             ].map((option) => (
               <Link
                 key={option.key}
@@ -56,43 +60,45 @@ export default async function CohortsPage({
 
         {cohorts.length === 0 ? (
           <EmptyState
-            title="No cohorts yet"
-            description="A cohort forms when customers make their first purchase. Connect a payment source so revenue can be grouped by acquisition."
+            title="Még nincsenek kohorszok"
+            description="A kohorsz az ügyfelek első vásárlásakor jön létre. Csatlakoztass fizetési forrást az ügyfélszerzés szerinti bevételi elemzéshez."
           />
         ) : (
           <Card>
             <CardHeader>
               <CardTitle>
-                {cohortBy === "month" ? "Acquisition month" : "Acquisition channel"}
+                {cohortBy === "month"
+                  ? "Ügyfélszerzés hónapja"
+                  : "Ügyfélszerző csatorna"}
               </CardTitle>
             </CardHeader>
             <CardContent>
               <Table>
                 <thead>
                   <tr>
-                    <Th>Cohort</Th>
-                    <Th className="text-right">Customers</Th>
+                    <Th>Kohorsz</Th>
+                    <Th className="text-right">Ügyfelek</Th>
                     {LTV_HORIZONS.map((horizon) => (
                       <Th key={horizon} className="text-right">
-                        {horizon}d LTV
+                        {horizon} napos ügyfélérték
                       </Th>
                     ))}
-                    <Th className="text-right">Lifetime</Th>
+                    <Th className="text-right">Teljes időszak</Th>
                     <Th className="text-right">CAC</Th>
-                    <Th className="text-right">Payback</Th>
+                    <Th className="text-right">Megtérülés</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {cohorts.map((cohort) => (
                     <tr key={cohort.cohortKey}>
-                      <Td>{cohort.cohortKey}</Td>
+                      <Td>{displayLabel(cohort.cohortKey)}</Td>
                       <Td numeric>{cohort.customers}</Td>
                       {LTV_HORIZONS.map((horizon) => (
                         <Td key={horizon} numeric>
                           {cohort.ltvByHorizon[horizon] === null ? (
                             <span
                               className="text-subtle-foreground"
-                              title="This horizon has not fully elapsed for every customer in the cohort"
+                              title="Ez az időtáv még nem telt el a kohorsz minden ügyfelénél"
                             >
                               —
                             </span>
@@ -114,7 +120,7 @@ export default async function CohortsPage({
                       </Td>
                       <Td numeric>
                         {cohort.cac === null ? (
-                          <Badge tone="neutral">Unavailable</Badge>
+                          <Badge tone="neutral">Nem elérhető</Badge>
                         ) : (
                           formatCurrency(cohort.cac, ctx.baseCurrency)
                         )}
@@ -123,9 +129,11 @@ export default async function CohortsPage({
                         {cohort.paybackStatus === "UNAVAILABLE" ? (
                           <span className="text-subtle-foreground">—</span>
                         ) : cohort.paybackStatus === "REACHED" ? (
-                          `${cohort.paybackDays}d`
+                          `${cohort.paybackDays} nap`
                         ) : (
-                          <span className="text-negative">not reached</span>
+                          <span className="text-negative">
+                            még nem térült meg
+                          </span>
                         )}
                       </Td>
                     </tr>
@@ -134,10 +142,9 @@ export default async function CohortsPage({
               </Table>
 
               <p className="mt-4 text-2xs leading-relaxed text-subtle-foreground">
-                CAC and payback need marketing spend, which no connected source
-                is currently providing. They are reported as unavailable rather
-                than estimated — a guessed acquisition cost would make every
-                payback figure on this page fiction.
+                Az ügyfélszerzési költséghez és a megtérüléshez marketingköltési
+                adatok szükségesek. Jelenleg nincs ilyen csatlakoztatott
+                adatforrás, ezért becslés helyett nem elérhető értéket mutatunk.
               </p>
             </CardContent>
           </Card>

@@ -1,3 +1,4 @@
+import { displayLabel, displayPath } from "@/lib/labels";
 import Link from "next/link";
 
 import { DemoDataBanner, PageBody, PageHeader } from "@/components/page";
@@ -11,7 +12,7 @@ import {
 } from "@/server/analytics/context";
 import { listJourneys, loadObservedPaths } from "@/server/analytics/queries";
 
-export const metadata = { title: "Journey" };
+export const metadata = { title: "Ügyfélutak" };
 export const dynamic = "force-dynamic";
 
 export default async function JourneysPage({
@@ -34,13 +35,13 @@ export default async function JourneysPage({
   return (
     <>
       <PageHeader
-        title="Journey"
-        description="What people actually did, in the order they did it — independent of any funnel you have drawn."
+        title="Ügyfélutak"
+        description="A látogatók tényleges lépései, időrendben – a megtervezett értékesítési tölcsérektől függetlenül."
         actions={
           <div className="flex gap-1">
             {[
-              { key: undefined, label: "Everyone" },
-              { key: "customers", label: "Customers only" },
+              { key: undefined, label: "Mindenki" },
+              { key: "customers", label: "Csak vásárlók" },
             ].map((option) => (
               <Link
                 key={option.label}
@@ -66,21 +67,21 @@ export default async function JourneysPage({
         <div className="grid gap-4 lg:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle>Most common buyer paths</CardTitle>
+              <CardTitle>Leggyakoribb vásárlói útvonalak</CardTitle>
             </CardHeader>
             <CardContent>
               {buyerPaths.length === 0 ? (
                 <EmptyState
-                  title="No buyer paths yet"
-                  description="Buyer paths appear once customers have completed a purchase in this period."
+                  title="Még nincsenek vásárlói útvonalak"
+                  description="A vásárlói útvonalak az időszak első befejezett vásárlásai után jelennek meg."
                 />
               ) : (
                 <ul className="space-y-2.5">
                   {buyerPaths.slice(0, 6).map((path) => (
-                    <li key={path.path} className="space-y-1">
+                    <li key={displayPath(path.path)} className="space-y-1">
                       <div className="flex items-baseline justify-between gap-3">
                         <span className="min-w-0 truncate text-xs text-muted-foreground">
-                          {path.path}
+                          {displayPath(path.path)}
                         </span>
                         <span className="tabular shrink-0 text-xs font-medium">
                           {formatNumber(path.people)}
@@ -103,28 +104,28 @@ export default async function JourneysPage({
 
           <Card>
             <CardHeader>
-              <CardTitle>Most common paths overall</CardTitle>
+              <CardTitle>Leggyakoribb útvonalak összesen</CardTitle>
             </CardHeader>
             <CardContent>
               {allPaths.length === 0 ? (
                 <EmptyState
-                  title="No paths yet"
-                  description="Paths are built from identified people. Call identify() so anonymous activity can be joined into a journey."
+                  title="Még nincsenek útvonalak"
+                  description="Az útvonalak azonosított személyekből épülnek fel. Az identify() hívással kapcsolhatod az anonim aktivitást az ügyfélúthoz."
                 />
               ) : (
                 <ul className="space-y-2">
                   {allPaths.slice(0, 6).map((path) => (
                     <li
-                      key={path.path}
+                      key={displayPath(path.path)}
                       className="flex items-baseline justify-between gap-3 border-b border-border pb-2 text-xs last:border-0"
                     >
                       <span className="min-w-0 truncate text-muted-foreground">
-                        {path.path}
+                        {displayPath(path.path)}
                       </span>
                       <span className="tabular shrink-0">
                         {formatNumber(path.people)} ·{" "}
                         <span className="text-muted-foreground">
-                          {path.buyers} bought
+                          {path.buyers} vásárló
                         </span>
                       </span>
                     </li>
@@ -138,24 +139,25 @@ export default async function JourneysPage({
         <Card>
           <CardHeader>
             <CardTitle>
-              {onlyCustomers ? "Customers" : "People"} by lifetime revenue
+              {onlyCustomers ? "Ügyfelek" : "Személyek"} a teljes ügyfélbevétel
+              szerint
             </CardTitle>
           </CardHeader>
           <CardContent>
             {people.length === 0 ? (
               <EmptyState
-                title="No identified people yet"
-                description="A person appears here once a deterministic identifier — an email, your own user id, or a payment customer id — has been seen for them."
+                title="Még nincsenek azonosított személyek"
+                description="A személy az első egyértelmű azonosító – e-mail-cím, saját felhasználói azonosító vagy fizetési ügyfélazonosító – beérkezésekor jelenik meg."
               />
             ) : (
               <Table>
                 <thead>
                   <tr>
-                    <Th>Person</Th>
-                    <Th>First touch</Th>
-                    <Th>Last touch</Th>
-                    <Th className="text-right">Events</Th>
-                    <Th className="text-right">Lifetime revenue</Th>
+                    <Th>Személy</Th>
+                    <Th>Első érintés</Th>
+                    <Th>Utolsó érintés</Th>
+                    <Th className="text-right">Események</Th>
+                    <Th className="text-right">Teljes ügyfélbevétel</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -169,8 +171,8 @@ export default async function JourneysPage({
                           {person.name ?? person.email ?? person.id}
                         </Link>
                       </Td>
-                      <Td>{person.firstTouchChannel ?? "—"}</Td>
-                      <Td>{person.lastTouchChannel ?? "—"}</Td>
+                      <Td>{displayLabel(person.firstTouchChannel ?? "—")}</Td>
+                      <Td>{displayLabel(person.lastTouchChannel ?? "—")}</Td>
                       <Td numeric>{formatNumber(person.eventCount)}</Td>
                       <Td numeric>
                         {person.lifetimeRevenueMinor > 0

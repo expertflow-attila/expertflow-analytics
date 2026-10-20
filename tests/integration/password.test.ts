@@ -33,7 +33,7 @@ it("does not claim delivery or issue reset tokens without an email provider", as
   );
   expect(existing).toEqual(absent);
   expect(existing).toEqual({
-    error: expect.stringContaining("not configured"),
+    error: expect.stringContaining("nincs beállítva"),
   });
   expect(await testDb.select().from(verificationTokens)).toEqual([]);
 });
@@ -44,15 +44,15 @@ it("rejects expired reset links without modifying the password", async () => {
     .values({ email: "reset@example.test", passwordHash: "unchanged" });
   await testDb.insert(verificationTokens).values({
     identifier: "reset@example.test",
-    token: "expired",
+    token: "lejárt",
     expires: new Date(Date.now() - 1000),
   });
   expect(
     await resetPassword(
       null,
-      form({ token: "expired", password: "new-password-123" }),
+      form({ token: "lejárt", password: "new-password-123" }),
     ),
-  ).toEqual({ error: expect.stringContaining("expired") });
+  ).toEqual({ error: expect.stringContaining("lejárt") });
   expect((await testDb.select().from(users))[0].passwordHash).toBe("unchanged");
 });
 
@@ -83,7 +83,7 @@ it("consumes a valid reset token once, including concurrent submissions", async 
   expect(results.filter((r) => r.status === "fulfilled")).toEqual([
     {
       status: "fulfilled",
-      value: { error: "This reset link is invalid or has expired" },
+      value: { error: "A visszaállítási hivatkozás érvénytelen vagy lejárt" },
     },
   ]);
   expect(

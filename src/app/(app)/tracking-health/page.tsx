@@ -11,7 +11,7 @@ import {
 } from "@/server/analytics/context";
 import { loadTrackingHealthInput } from "@/server/analytics/queries";
 
-export const metadata = { title: "Tracking Health" };
+export const metadata = { title: "Mérés állapota" };
 export const dynamic = "force-dynamic";
 
 const ICONS = {
@@ -44,8 +44,8 @@ export default async function TrackingHealthPage({
   return (
     <>
       <PageHeader
-        title="Tracking Health"
-        description="How much the numbers elsewhere in this product can be trusted. Every check names the data it looked at and what to do about it."
+        title="Mérés állapota"
+        description="Mennyire megbízhatók az elemzések? Minden ellenőrzés megmutatja a vizsgált adatokat és a szükséges javítást."
       />
 
       <PageBody>
@@ -56,11 +56,11 @@ export default async function TrackingHealthPage({
             {score === null ? (
               <div className="space-y-2">
                 <p className="text-2xl font-semibold tracking-tight text-muted-foreground">
-                  Unavailable
+                  Nem elérhető
                 </p>
                 <p className="max-w-lg text-xs leading-relaxed text-muted-foreground">
-                  {unavailableReason} Install the tracking script or send an
-                  event to the API, and this page will start reporting.
+                  {unavailableReason} Telepítsd a mérőkódot, vagy küldj egy
+                  eseményt az API-ra az ellenőrzések elindításához.
                 </p>
               </div>
             ) : (
@@ -84,15 +84,15 @@ export default async function TrackingHealthPage({
 
                   <p className="max-w-md text-xs leading-relaxed text-muted-foreground">
                     {failing.length === 0
-                      ? "Every check passed. Analytics on other pages can be read at face value."
-                      : `${failing.length} ${failing.length === 1 ? "check needs" : "checks need"} attention. Treat channel and attribution figures as indicative until they are resolved.`}
+                      ? "Minden ellenőrzés sikeres. Az elemzési oldalak adatai megbízhatók."
+                      : `${failing.length} ellenőrzés igényel figyelmet. A csatornák és az attribúció értékeit a javításig kezeld tájékoztató jellegűként.`}
                   </p>
                 </div>
 
                 <div
                   className="mt-5 h-2 w-full overflow-hidden rounded-full bg-surface-muted"
                   role="img"
-                  aria-label={`Tracking health score ${score} out of 100`}
+                  aria-label={`Mérési pontszám: ${score} a 100-ból`}
                 >
                   <div
                     className={cn(
@@ -120,7 +120,10 @@ export default async function TrackingHealthPage({
                 <Card>
                   <CardContent className="flex items-start gap-3 pt-4">
                     <Icon
-                      className={cn("mt-0.5 size-4 shrink-0", TONES[check.status])}
+                      className={cn(
+                        "mt-0.5 size-4 shrink-0",
+                        TONES[check.status],
+                      )}
                       aria-hidden
                     />
 
@@ -128,7 +131,7 @@ export default async function TrackingHealthPage({
                       <div className="flex flex-wrap items-baseline justify-between gap-2">
                         <p className="text-sm font-medium">{check.label}</p>
                         <span className="text-2xs text-subtle-foreground">
-                          worth {check.weight} points
+                          súly: {check.weight} pont
                         </span>
                       </div>
 
@@ -138,7 +141,9 @@ export default async function TrackingHealthPage({
 
                       {check.status !== "PASS" ? (
                         <p className="text-xs leading-relaxed">
-                          <span className="font-medium">Fix: </span>
+                          <span className="font-medium">
+                            Javasolt javítás:{" "}
+                          </span>
                           {check.recommendation}
                         </p>
                       ) : null}
@@ -153,23 +158,34 @@ export default async function TrackingHealthPage({
         <Card>
           <CardContent className="pt-5">
             <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
-              Underlying counts
+              Az ellenőrzések alapadatai
             </p>
             <dl className="mt-3 grid grid-cols-2 gap-x-6 gap-y-2 sm:grid-cols-4">
               {[
-                { label: "Events", value: input.totalEvents },
-                { label: "Sessions", value: input.totalSessions },
-                { label: "Purchases", value: input.totalPurchases },
-                { label: "Ingest requests", value: input.ingestRequests },
-                { label: "Duplicates", value: input.duplicateEvents },
-                { label: "Anonymous events", value: input.eventsWithoutIdentity },
-                { label: "Unknown-source sessions", value: input.sessionsWithUnknownSource },
-                { label: "Unmatched purchases", value: input.purchasesWithoutPerson },
+                { label: "Események", value: input.totalEvents },
+                { label: "Munkamenetek", value: input.totalSessions },
+                { label: "Vásárlások", value: input.totalPurchases },
+                { label: "Adatfogadási kérések", value: input.ingestRequests },
+                { label: "Duplikációk", value: input.duplicateEvents },
+                {
+                  label: "Anonim események",
+                  value: input.eventsWithoutIdentity,
+                },
+                {
+                  label: "Ismeretlen forrású munkamenetek",
+                  value: input.sessionsWithUnknownSource,
+                },
+                {
+                  label: "Nem egyeztetett vásárlások",
+                  value: input.purchasesWithoutPerson,
+                },
               ].map((row) => (
                 <div key={row.label}>
-                  <dt className="text-2xs text-muted-foreground">{row.label}</dt>
+                  <dt className="text-2xs text-muted-foreground">
+                    {row.label}
+                  </dt>
                   <dd className="tabular text-sm font-medium">
-                    {row.value.toLocaleString("en-US")}
+                    {row.value.toLocaleString("hu-HU")}
                   </dd>
                 </div>
               ))}

@@ -42,10 +42,10 @@ export async function resolveProjectContext(
 }
 
 export const RANGE_PRESETS = {
-  "7d": { label: "Last 7 days", days: 7 },
-  "30d": { label: "Last 30 days", days: 30 },
-  "90d": { label: "Last 90 days", days: 90 },
-  "180d": { label: "Last 180 days", days: 180 },
+  "7d": { label: "Utolsó 7 nap", days: 7 },
+  "30d": { label: "Utolsó 30 nap", days: 30 },
+  "90d": { label: "Utolsó 90 nap", days: 90 },
+  "180d": { label: "Utolsó 180 nap", days: 180 },
 } as const;
 
 export type RangePreset = keyof typeof RANGE_PRESETS;

@@ -19,7 +19,9 @@ async function login(page, email = "demo@funnelintelligence.dev") {
   await page.goto("/login");
   await page.locator("#email").fill(email);
   await page.locator("#password").fill("demo1234");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Bejelentkezés", exact: true })
+    .click();
   await page.waitForURL(/overview|onboarding/);
 }
 test("unauthenticated routes and invalid login", async ({ page }) => {
@@ -29,8 +31,10 @@ test("unauthenticated routes and invalid login", async ({ page }) => {
   }
   await page.locator("#email").fill("absent@example.test");
   await page.locator("#password").fill("wrongpassword");
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByRole("alert")).toBeVisible();
+  await page
+    .getByRole("button", { name: "Bejelentkezés", exact: true })
+    .click();
+  await expect(page.locator("p[role=alert]")).toBeVisible();
 });
 test("all analytics routes desktop and mobile", async ({ page }) => {
   const evidence = [];
@@ -63,6 +67,7 @@ test("all analytics routes desktop and mobile", async ({ page }) => {
           .filter((e) => e.getBoundingClientRect().width > 0)
           .map((e) => e.textContent),
       }));
+      expect(item["width" + width].content, `${route} at ${width}px`).toBeLessThanOrEqual(width);
     }
     await page.screenshot({
       path: `${artifactDir}/${route}-mobile.png`,
@@ -82,7 +87,7 @@ test("journey filters, customer details and funnel interaction", async ({
 }) => {
   await login(page);
   await page.goto("/journeys");
-  await page.getByRole("link", { name: "Customers only", exact: true }).click();
+  await page.getByRole("link", { name: "Csak vásárlók", exact: true }).click();
   await expect(page).toHaveURL(/filter=customers/);
   const customer = page.locator('a[href^="/customers/"]').first();
   await expect(customer).toBeVisible();
@@ -93,7 +98,9 @@ test("journey filters, customer details and funnel interaction", async ({
     fullPage: true,
   });
   await page.goto("/funnels");
-  await page.getByRole("button", { name: "Fit View", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Nézet igazítása", exact: true })
+    .click();
   await page.locator(".react-flow__node button").first().click();
   await expect(
     page.locator(".react-flow__node button").first(),
@@ -103,7 +110,7 @@ test("journey filters, customer details and funnel interaction", async ({
     fullPage: true,
   });
   await page.goto("/funnels?id=missing");
-  await expect(page.getByText("That funnel could not be found")).toBeVisible();
+  await expect(page.getByText("Ez a tölcsér nem található")).toBeVisible();
 });
 test("new account and empty workspace onboarding", async ({ page }) => {
   const email = `audit-${Date.now()}@example.test`;
@@ -112,7 +119,7 @@ test("new account and empty workspace onboarding", async ({ page }) => {
   await page.locator("#email").fill(email);
   await page.locator("#password").fill("demo1234");
   await page
-    .getByRole("button", { name: "Create account", exact: true })
+    .getByRole("button", { name: "Fiók létrehozása", exact: true })
     .click();
   await expect(page).toHaveURL(/registered=1/);
   await login(page, email);

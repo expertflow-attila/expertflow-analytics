@@ -14,7 +14,7 @@ const requestSchema = z.object({
 
 const resetSchema = z.object({
   token: z.string().min(1),
-  password: z.string().min(8, "Use at least 8 characters"),
+  password: z.string().min(8, "Legalább 8 karaktert használj"),
 });
 
 export type ActionResult = { error: string } | { ok: true };
@@ -24,17 +24,20 @@ export async function requestPasswordReset(
   _prev: unknown,
   formData: FormData,
 ): Promise<ActionResult> {
-  const parsed = requestSchema.safeParse({
-    email: String(formData.get("email") ?? ""),
-  });
+  const parsed = requestSchema.safeParse(
+    {
+      email: String(formData.get("email") ?? ""),
+    },
+    { error: z.locales.hu().localeError },
+  );
 
   if (!parsed.success) {
-    return { error: "Enter a valid email address" };
+    return { error: "Adj meg érvényes e-mail-címet" };
   }
 
   return {
     error:
-      "Password reset email delivery is not configured. Contact your workspace administrator.",
+      "A jelszó-visszaállító e-mailek küldése még nincs beállítva. Kérj segítséget a munkaterület rendszergazdájától.",
   };
 }
 
@@ -45,13 +48,16 @@ export async function resetPassword(
   _prev: unknown,
   formData: FormData,
 ): Promise<ActionResult> {
-  const parsed = resetSchema.safeParse({
-    token: String(formData.get("token") ?? ""),
-    password: String(formData.get("password") ?? ""),
-  });
+  const parsed = resetSchema.safeParse(
+    {
+      token: String(formData.get("token") ?? ""),
+      password: String(formData.get("password") ?? ""),
+    },
+    { error: z.locales.hu().localeError },
+  );
 
   if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Invalid details" };
+    return { error: parsed.error.issues[0]?.message ?? "Érvénytelen adatok" };
   }
 
   const passwordHash = await hash(parsed.data.password, 10);
@@ -77,7 +83,7 @@ export async function resetPassword(
   });
 
   if (!updated) {
-    return { error: "This reset link is invalid or has expired" };
+    return { error: "A visszaállítási hivatkozás érvénytelen vagy lejárt" };
   }
 
   redirect("/login?reset=1");

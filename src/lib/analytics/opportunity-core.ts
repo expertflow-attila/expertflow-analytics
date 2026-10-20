@@ -118,7 +118,8 @@ function assessConfidence(input: OpportunityInput): {
   if (node.entered === 0) {
     return {
       confidence: "UNAVAILABLE",
-      reason: "No actors entered this step in the selected period.",
+      reason:
+        "Ebben az időszakban senki nem lépett be a tölcsér ezen pontjára.",
     };
   }
 
@@ -126,27 +127,27 @@ function assessConfidence(input: OpportunityInput): {
     return {
       confidence: "UNAVAILABLE",
       reason:
-        "No revenue has been observed downstream of this step, so an upside cannot be estimated.",
+        "E lépés után még nincs megfigyelt bevétel, ezért többletbevétel nem becsülhető.",
     };
   }
 
   if (node.entered < 100) {
     return {
       confidence: "LOW",
-      reason: `Only ${node.entered} actors entered this step; the conversion rate is not yet stable.`,
+      reason: `Csak ${node.entered.toLocaleString("hu-HU")} fő lépett be erre a lépésre; a konverziós arány még nem stabil.`,
     };
   }
 
   if (node.entered < 500) {
     return {
       confidence: "MEDIUM",
-      reason: `${node.entered} actors entered this step — enough for a direction, not for a precise figure.`,
+      reason: `${node.entered.toLocaleString("hu-HU")} fő lépett be erre a lépésre. Ez az irány megítéléséhez elegendő, pontos becsléshez még kevés.`,
     };
   }
 
   return {
     confidence: "HIGH",
-    reason: `${node.entered} actors entered this step, and downstream revenue is observed.`,
+    reason: `${node.entered.toLocaleString("hu-HU")} fő lépett be erre a lépésre, és a későbbi lépésekből bevétel is megfigyelhető.`,
   };
 }
 
