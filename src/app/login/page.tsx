@@ -29,12 +29,12 @@ async function signInAction(formData: FormData) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; registered?: string }>;
+  searchParams: Promise<{ error?: string; registered?: string; reset?: string }>;
 }) {
   const session = await auth();
   if (session?.user) redirect("/overview");
 
-  const { error, registered } = await searchParams;
+  const { error, registered, reset } = await searchParams;
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4">
@@ -51,6 +51,12 @@ export default async function LoginPage({
         {registered ? (
           <p className="mb-4 rounded-md bg-positive-subtle px-3 py-2 text-xs text-positive">
             Account created. Sign in to set up your workspace.
+          </p>
+        ) : null}
+
+        {reset ? (
+          <p className="mb-4 rounded-md bg-positive-subtle px-3 py-2 text-xs text-positive">
+            Password updated. You can now sign in.
           </p>
         ) : null}
 
@@ -89,6 +95,12 @@ export default async function LoginPage({
             Sign in
           </Button>
         </form>
+
+        <p className="mt-4 text-xs text-muted-foreground">
+          <Link href="/forgot-password" className="text-accent hover:underline">
+            Forgot password?
+          </Link>
+        </p>
 
         <p className="mt-6 text-xs leading-relaxed text-muted-foreground">
           Running the demo dataset? Sign in with{" "}
