@@ -4,7 +4,6 @@ import { hash } from "bcryptjs";
 import { and, eq, gt } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { nanoid } from "nanoid";
 
 import { db } from "@/server/db";
 import { users, verificationTokens } from "@/server/db/schema";
@@ -20,10 +19,7 @@ const resetSchema = z.object({
 
 export type ActionResult = { error: string } | { ok: true };
 
-/**
- * Request a password reset.
- * Always returns success to avoid email enumeration.
- */
+/** Do not issue or log reset credentials until email delivery is configured. */
 export async function requestPasswordReset(
   _prev: unknown,
   formData: FormData,
@@ -36,35 +32,10 @@ export async function requestPasswordReset(
     return { error: "Enter a valid email address" };
   }
 
-  const email = parsed.data.email.toLowerCase();
-
-  const [user] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1);
-
-  if (user) {
-    const token = nanoid(32);
-    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
-
-    await db
-      .delete(verificationTokens)
-      .where(eq(verificationTokens.identifier, email));
-
-    await db.insert(verificationTokens).values({
-      identifier: email,
-      token,
-      expires,
-    });
-
-    // TODO: send email with reset link
-    // For now, log it. In production, wire to an email provider.
-    const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? "https://expertflow-analytics.vercel.app"}/reset-password?token=${token}`;
-    console.log(`[password-reset] ${email} -> ${resetUrl}`);
-  }
-
-  redirect("/forgot-password?sent=1");
+  return {
+    error:
+      "Password reset email delivery is not configured. Contact your workspace administrator.",
+  };
 }
 
 /**
@@ -83,31 +54,31 @@ export async function resetPassword(
     return { error: parsed.error.issues[0]?.message ?? "Invalid details" };
   }
 
-  const [record] = await db
-    .select()
-    .from(verificationTokens)
-    .where(
-      and(
-        eq(verificationTokens.token, parsed.data.token),
-        gt(verificationTokens.expires, new Date()),
-      ),
-    )
-    .limit(1);
+  const passwordHash = await hash(parsed.data.password, 10);
+  const updated = await db.transaction(async (tx) => {
+    // Claim the token atomically: concurrent submissions cannot both use it.
+    const [record] = await tx
+      .delete(verificationTokens)
+      .where(
+        and(
+          eq(verificationTokens.token, parsed.data.token),
+          gt(verificationTokens.expires, new Date()),
+        ),
+      )
+      .returning();
+    if (!record) return false;
 
-  if (!record) {
+    const changed = await tx
+      .update(users)
+      .set({ passwordHash, updatedAt: new Date() })
+      .where(eq(users.email, record.identifier))
+      .returning({ id: users.id });
+    return changed.length === 1;
+  });
+
+  if (!updated) {
     return { error: "This reset link is invalid or has expired" };
   }
-
-  const passwordHash = await hash(parsed.data.password, 10);
-
-  await db
-    .update(users)
-    .set({ passwordHash, updatedAt: new Date() })
-    .where(eq(users.email, record.identifier));
-
-  await db
-    .delete(verificationTokens)
-    .where(eq(verificationTokens.token, parsed.data.token));
 
   redirect("/login?reset=1");
 }

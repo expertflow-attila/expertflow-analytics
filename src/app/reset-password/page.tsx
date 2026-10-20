@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/primitives";
 import { resetPassword } from "@/server/actions/password";
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const [state, action, pending] = useActionState(resetPassword, null);
   const searchParams = useSearchParams();
   const token = searchParams.get("token") ?? "";
@@ -22,7 +22,10 @@ export default function ResetPasswordPage() {
             This password reset link is missing or invalid.
           </p>
           <p className="mt-6 text-xs">
-            <Link href="/forgot-password" className="text-accent hover:underline">
+            <Link
+              href="/forgot-password"
+              className="text-accent hover:underline"
+            >
               Request a new link
             </Link>
           </p>
@@ -79,5 +82,13 @@ export default function ResetPasswordPage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<p role="status">Loading password reset…</p>}>
+      <ResetPasswordForm />
+    </Suspense>
   );
 }
