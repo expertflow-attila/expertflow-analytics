@@ -34,8 +34,9 @@ export function OnboardingForm() {
           Set up your workspace
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Two names, a timezone and a starting funnel. You can change all of
-          them later.
+          Two names, a timezone and a starting funnel. Names and timezone can be
+          changed in Settings. Choose the base currency carefully; it stays
+          fixed to protect historical amounts.
         </p>
       </div>
 

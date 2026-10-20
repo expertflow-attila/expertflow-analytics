@@ -16,7 +16,7 @@ export function formatCurrency(
   options: { compact?: boolean; locale?: string } = {},
 ): string {
   if (minorUnits === null || minorUnits === undefined) return "—";
-  const { compact = false, locale = "en-US" } = options;
+  const { compact = false, locale = "hu-HU" } = options;
 
   return new Intl.NumberFormat(locale, {
     style: "currency",
@@ -32,7 +32,7 @@ export function formatNumber(
   options: { compact?: boolean; locale?: string } = {},
 ): string {
   if (value === null || value === undefined) return "—";
-  const { compact = false, locale = "en-US" } = options;
+  const { compact = false, locale = "hu-HU" } = options;
 
   return new Intl.NumberFormat(locale, {
     notation: compact ? "compact" : "standard",

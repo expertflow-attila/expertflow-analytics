@@ -1,13 +1,16 @@
 "use server";
 
-import { asc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 
 import { features } from "@/env";
 import { runAnalyst } from "@/server/ai/agent";
 import { resolveProvider } from "@/server/ai/provider";
-import { resolveProjectContext, resolveRange } from "@/server/analytics/context";
+import {
+  resolveProjectContext,
+  resolveRange,
+} from "@/server/analytics/context";
 import { db } from "@/server/db";
 import { aiConversations, aiMessages } from "@/server/db/schema";
 import { assertRole } from "@/server/tenancy";
@@ -18,8 +21,7 @@ const askSchema = z.object({
 });
 
 export type AskResult =
-  | { error: string }
-  | { ok: true; conversationId: string };
+  { error: string } | { ok: true; conversationId: string };
 
 export async function askAnalyst(
   _prev: unknown,
@@ -52,6 +54,21 @@ export async function askAnalyst(
 
   let conversationId = parsed.data.conversationId;
 
+  if (conversationId) {
+    const [conversation] = await db
+      .select({ id: aiConversations.id })
+      .from(aiConversations)
+      .where(
+        and(
+          eq(aiConversations.id, conversationId),
+          eq(aiConversations.projectId, ctx.projectId),
+          eq(aiConversations.organizationId, ctx.organizationId),
+        ),
+      )
+      .limit(1);
+    if (!conversation) return { error: "Conversation not found." };
+  }
+
   if (!conversationId) {
     const [conversation] = await db
       .insert(aiConversations)
@@ -69,8 +86,9 @@ export async function askAnalyst(
     .select({ role: aiMessages.role, content: aiMessages.content })
     .from(aiMessages)
     .where(eq(aiMessages.conversationId, conversationId))
-    .orderBy(asc(aiMessages.createdAt))
+    .orderBy(desc(aiMessages.createdAt))
     .limit(20);
+  priorRows.reverse();
 
   await db.insert(aiMessages).values({
     conversationId,

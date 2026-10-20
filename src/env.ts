@@ -33,7 +33,10 @@ const schema = z.object({
       "ENCRYPTION_KEY must be 32 bytes, base64 encoded",
     ),
 
-  CRON_SECRET: z.string().min(16).optional(),
+  CRON_SECRET: z.preprocess(
+    (value) => value === "" ? undefined : value,
+    z.string().min(16).optional(),
+  ),
   REDIS_URL: z.string().url().optional(),
 
   OPENAI_API_KEY: z.string().optional(),

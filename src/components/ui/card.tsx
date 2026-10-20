@@ -9,7 +9,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-[var(--radius-card)] border border-border bg-surface",
+        "min-w-0 rounded-[var(--radius-card)] border border-border bg-surface",
         className,
       )}
       {...props}
@@ -46,10 +46,7 @@ export function CardDescription({
   ...props
 }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
-    <p
-      className={cn("text-xs text-muted-foreground", className)}
-      {...props}
-    />
+    <p className={cn("text-xs text-muted-foreground", className)} {...props} />
   );
 }
 

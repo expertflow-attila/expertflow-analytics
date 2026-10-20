@@ -3,10 +3,17 @@ import { eq } from "drizzle-orm";
 import { PageBody, PageHeader } from "@/components/page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/primitives";
+import { ConfigForm } from "@/components/config-form";
+import { saveWorkspace, saveAttribution } from "@/server/actions/configuration";
+import { Input, Label } from "@/components/ui/primitives";
 import { features } from "@/env";
 import { resolveProjectContext } from "@/server/analytics/context";
 import { db } from "@/server/db";
-import { attributionConfigs, organizations, projects } from "@/server/db/schema";
+import {
+  attributionConfigs,
+  organizations,
+  projects,
+} from "@/server/db/schema";
 
 export const metadata = { title: "Settings" };
 export const dynamic = "force-dynamic";
@@ -68,6 +75,145 @@ export default async function SettingsPage() {
       />
 
       <PageBody>
+        {ctx.role === "OWNER" || ctx.role === "ADMIN" ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Edit workspace</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ConfigForm action={saveWorkspace} submitLabel="Save workspace">
+                <input type="hidden" name="projectId" value={ctx.projectId} />
+                <Label htmlFor="organizationName">Organization name</Label>
+                <Input
+                  id="organizationName"
+                  name="organizationName"
+                  defaultValue={organization.name}
+                  required
+                  minLength={2}
+                />
+                <Label htmlFor="projectName">Project name</Label>
+                <Input
+                  id="projectName"
+                  name="projectName"
+                  defaultValue={project.name}
+                  required
+                  minLength={2}
+                />
+                <Label htmlFor="timezone">Timezone</Label>
+                <Input
+                  id="timezone"
+                  name="timezone"
+                  defaultValue={organization.timezone}
+                  required
+                />
+                <Label htmlFor="baseCurrency">Base currency (fixed)</Label>
+                <Input
+                  id="baseCurrency"
+                  name="baseCurrency"
+                  value={project.baseCurrency}
+                  readOnly
+                />
+                <p className="text-xs text-muted-foreground">
+                  A different currency needs a separate project so historical
+                  amounts keep their meaning.
+                </p>
+              </ConfigForm>
+            </CardContent>
+          </Card>
+        ) : null}
+        {(ctx.role === "OWNER" || ctx.role === "ADMIN") && attribution ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Edit attribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ConfigForm
+                action={saveAttribution}
+                submitLabel="Save attribution"
+              >
+                <input type="hidden" name="projectId" value={ctx.projectId} />
+                <Label htmlFor="model">Model</Label>
+                <select
+                  id="model"
+                  name="model"
+                  defaultValue={attribution.model}
+                  className="block rounded-md border bg-surface p-2"
+                >
+                  {[
+                    "FIRST_TOUCH",
+                    "LAST_TOUCH",
+                    "LINEAR",
+                    "U_SHAPED",
+                    "POSITION_BASED",
+                  ].map((m) => (
+                    <option key={m}>{m}</option>
+                  ))}
+                </select>
+                <Label htmlFor="windowDays">Attribution window (days)</Label>
+                <Input
+                  id="windowDays"
+                  name="windowDays"
+                  type="number"
+                  min={1}
+                  max={365}
+                  defaultValue={attribution.windowDays}
+                  required
+                />
+                <Label htmlFor="revenueEventName">
+                  Revenue event (reconciled orders)
+                </Label>
+                <Input
+                  id="revenueEventName"
+                  name="revenueEventName"
+                  value={attribution.revenueEventName}
+                  readOnly
+                />
+                <Label htmlFor="firstTouchWeight">
+                  First touch weight (position-based model)
+                </Label>
+                <Input
+                  id="firstTouchWeight"
+                  name="firstTouchWeight"
+                  type="number"
+                  min={0}
+                  max={1}
+                  step="0.01"
+                  defaultValue={attribution.firstTouchWeight}
+                  required
+                />
+                <Label htmlFor="leadTouchWeight">
+                  Lead touch weight (position-based model)
+                </Label>
+                <Input
+                  id="leadTouchWeight"
+                  name="leadTouchWeight"
+                  type="number"
+                  min={0}
+                  max={1}
+                  step="0.01"
+                  defaultValue={attribution.leadTouchWeight}
+                  required
+                />
+                <label className="block text-sm">
+                  <input
+                    name="includeDirect"
+                    type="checkbox"
+                    defaultChecked={attribution.includeDirect === "true"}
+                  />{" "}
+                  Include direct and unknown
+                </label>
+                <label className="block text-sm">
+                  <input
+                    name="includeOrganic"
+                    type="checkbox"
+                    defaultChecked={attribution.includeOrganic === "true"}
+                  />{" "}
+                  Include organic
+                </label>
+              </ConfigForm>
+            </CardContent>
+          </Card>
+        ) : null}
         <Card>
           <CardHeader>
             <CardTitle>Workspace</CardTitle>
@@ -83,7 +229,9 @@ export default async function SettingsPage() {
                     <dd className="text-xs font-medium">{row.value}</dd>
                   </div>
                   {row.note ? (
-                    <p className="text-2xs text-subtle-foreground">{row.note}</p>
+                    <p className="text-2xs text-subtle-foreground">
+                      {row.note}
+                    </p>
                   ) : null}
                 </div>
               ))}
@@ -138,9 +286,7 @@ export default async function SettingsPage() {
               <Badge
                 tone={project.settings?.demoDataset ? "warning" : "positive"}
               >
-                {project.settings?.demoDataset
-                  ? "Demo dataset"
-                  : "Live data"}
+                {project.settings?.demoDataset ? "Demo dataset" : "Live data"}
               </Badge>
             </div>
             <p className="text-xs leading-relaxed text-muted-foreground">

@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { decryptSecret } from "@/server/crypto";
@@ -32,7 +32,11 @@ export async function POST(
 
   const projectId = request.nextUrl.searchParams.get("project");
   if (!projectId) {
-    return fail(400, "MISSING_PROJECT", "Add ?project=prj_... to the webhook URL");
+    return fail(
+      400,
+      "MISSING_PROJECT",
+      "Add ?project=prj_... to the webhook URL",
+    );
   }
 
   const limit = await checkRateLimit(`webhook:${projectId}:${providerId}`, {
@@ -57,6 +61,7 @@ export async function POST(
       and(
         eq(integrations.projectId, projectId),
         eq(integrations.provider, providerId),
+        inArray(integrations.status, ["CONNECTED", "ERROR"]),
       ),
     )
     .limit(1);
@@ -72,7 +77,11 @@ export async function POST(
     try {
       config = JSON.parse(decryptSecret(row.encryptedConfig));
     } catch {
-      return fail(500, "CONFIG_UNREADABLE", "Integration configuration could not be read");
+      return fail(
+        500,
+        "CONFIG_UNREADABLE",
+        "Integration configuration could not be read",
+      );
     }
   }
 
@@ -113,7 +122,12 @@ export async function POST(
         status: "CONNECTED",
         lastError: null,
       })
-      .where(eq(integrations.id, row.integrationId));
+      .where(
+        and(
+          eq(integrations.id, row.integrationId),
+          ne(integrations.status, "DISCONNECTED"),
+        ),
+      );
 
     await db.insert(ingestLogs).values({
       projectId,
@@ -146,7 +160,12 @@ async function noteFailure(
       lastError: detail ? `${code}: ${detail.slice(0, 500)}` : code,
       status: "ERROR",
     })
-    .where(eq(integrations.id, integrationId));
+    .where(
+      and(
+        eq(integrations.id, integrationId),
+        ne(integrations.status, "DISCONNECTED"),
+      ),
+    );
 
   await db.insert(ingestLogs).values({
     projectId,

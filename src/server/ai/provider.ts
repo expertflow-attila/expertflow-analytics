@@ -56,11 +56,11 @@ const DEFAULT_MODELS = {
 /* --- OpenAI-compatible ---------------------------------------------------- */
 
 class OpenAIProvider implements AIProvider {
-  readonly id = "openai";
   constructor(
     readonly model: string,
     private readonly apiKey: string,
     private readonly baseUrl = "https://api.openai.com/v1",
+    readonly id = "openai",
   ) {}
 
   async chat(messages: ChatMessage[], tools: ToolSpec[]): Promise<ChatResult> {
@@ -86,7 +86,9 @@ class OpenAIProvider implements AIProvider {
     });
 
     if (!response.ok) {
-      throw new Error(`OpenAI request failed: ${response.status} ${await safeText(response)}`);
+      throw new Error(
+        `OpenAI request failed: ${response.status} ${await safeText(response)}`,
+      );
     }
 
     const body = await response.json();
@@ -99,11 +101,13 @@ class OpenAIProvider implements AIProvider {
 
     return {
       content: choice.content ?? "",
-      toolCalls: ((choice.tool_calls ?? []) as OpenAIToolCall[]).map((call) => ({
-        id: call.id,
-        name: call.function.name,
-        arguments: parseJson(call.function.arguments),
-      })),
+      toolCalls: ((choice.tool_calls ?? []) as OpenAIToolCall[]).map(
+        (call) => ({
+          id: call.id,
+          name: call.function.name,
+          arguments: parseJson(call.function.arguments),
+        }),
+      ),
     };
   }
 }
@@ -201,7 +205,9 @@ class AnthropicProvider implements AIProvider {
   }
 }
 
-function toAnthropicMessages(messages: ChatMessage[]): Array<Record<string, unknown>> {
+function toAnthropicMessages(
+  messages: ChatMessage[],
+): Array<Record<string, unknown>> {
   const result: Array<Record<string, unknown>> = [];
 
   for (const message of messages) {
@@ -225,7 +231,8 @@ function toAnthropicMessages(messages: ChatMessage[]): Array<Record<string, unkn
 
     if (message.role === "assistant" && message.toolCalls?.length) {
       const content: Array<Record<string, unknown>> = [];
-      if (message.content) content.push({ type: "text", text: message.content });
+      if (message.content)
+        content.push({ type: "text", text: message.content });
       for (const call of message.toolCalls) {
         content.push({
           type: "tool_use",
@@ -260,8 +267,9 @@ export function createProvider(config: ProviderConfig): AIProvider | null {
     }
     case "ollama": {
       // Ollama exposes an OpenAI-compatible endpoint and needs no key.
-      const base = config.baseUrl ?? env.OLLAMA_BASE_URL ?? "http://localhost:11434";
-      return new OpenAIProvider(model, "ollama", `${base}/v1`);
+      const base =
+        config.baseUrl ?? env.OLLAMA_BASE_URL ?? "http://localhost:11434";
+      return new OpenAIProvider(model, "ollama", `${base}/v1`, "ollama");
     }
     default:
       return null;
@@ -278,6 +286,7 @@ export function resolveProvider(
   // rather than storing one per organization.
   if (env.ANTHROPIC_API_KEY) return createProvider({ provider: "anthropic" });
   if (env.OPENAI_API_KEY) return createProvider({ provider: "openai" });
+  if (env.OLLAMA_BASE_URL) return createProvider({ provider: "ollama" });
   return null;
 }
 

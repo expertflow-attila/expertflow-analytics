@@ -2,7 +2,11 @@ import { and, asc, eq } from "drizzle-orm";
 
 import { db } from "@/server/db";
 import { memberships, projects } from "@/server/db/schema";
-import { requireProject, requireUser, type TenantContext } from "@/server/tenancy";
+import {
+  requireProject,
+  requireUser,
+  type TenantContext,
+} from "@/server/tenancy";
 import type { DateRange } from "./queries";
 
 /**
@@ -51,7 +55,9 @@ export function resolveRange(preset: string | undefined): {
   range: DateRange;
 } {
   const key: RangePreset =
-    preset && preset in RANGE_PRESETS ? (preset as RangePreset) : "90d";
+    preset && Object.hasOwn(RANGE_PRESETS, preset)
+      ? (preset as RangePreset)
+      : "90d";
 
   const to = new Date();
   const from = new Date(to.getTime() - RANGE_PRESETS[key].days * 86_400_000);

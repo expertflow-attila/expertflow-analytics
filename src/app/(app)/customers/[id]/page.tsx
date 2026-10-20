@@ -1,11 +1,14 @@
 import { notFound } from "next/navigation";
 
-import { PageBody, PageHeader } from "@/components/page";
+import { DemoDataBanner, PageBody, PageHeader } from "@/components/page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, EmptyState } from "@/components/ui/primitives";
 import { eventLabel } from "@/lib/events/taxonomy";
 import { formatCurrency } from "@/lib/utils";
-import { resolveProjectContext } from "@/server/analytics/context";
+import {
+  isDemoDataset,
+  resolveProjectContext,
+} from "@/server/analytics/context";
 import { loadJourney } from "@/server/analytics/queries";
 
 export const dynamic = "force-dynamic";
@@ -17,6 +20,7 @@ export default async function CustomerPage({
 }) {
   const { id } = await params;
   const ctx = await resolveProjectContext();
+  const demo = await isDemoDataset(ctx);
   const data = await loadJourney(ctx, id);
 
   if (!data) notFound();
@@ -38,6 +42,7 @@ export default async function CustomerPage({
       />
 
       <PageBody>
+        {demo ? <DemoDataBanner /> : null}
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3">
             <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
@@ -59,7 +64,9 @@ export default async function CustomerPage({
             <p className="text-2xs font-medium tracking-wide text-muted-foreground uppercase">
               Orders
             </p>
-            <p className="tabular mt-1 text-lg font-semibold">{orders.length}</p>
+            <p className="tabular mt-1 text-lg font-semibold">
+              {orders.length}
+            </p>
           </div>
         </div>
 
@@ -77,7 +84,10 @@ export default async function CustomerPage({
               ) : (
                 <ol className="relative space-y-4 border-l border-border pl-5">
                   {timeline.map((event, index) => (
-                    <li key={`${event.eventName}-${index}`} className="relative">
+                    <li
+                      key={`${event.eventName}-${index}`}
+                      className="relative"
+                    >
                       <span
                         className={
                           event.revenueMinor
@@ -100,7 +110,10 @@ export default async function CustomerPage({
                           event.utmCampaign,
                           event.pagePath,
                           event.revenueMinor
-                            ? formatCurrency(event.revenueMinor, ctx.baseCurrency)
+                            ? formatCurrency(
+                                event.revenueMinor,
+                                ctx.baseCurrency,
+                              )
                             : null,
                         ]
                           .filter(Boolean)
@@ -137,7 +150,9 @@ export default async function CustomerPage({
                         </div>
                         <p className="text-muted-foreground">
                           {formatter.format(touchpoint.occurredAt)}
-                          {touchpoint.campaign ? ` · ${touchpoint.campaign}` : ""}
+                          {touchpoint.campaign
+                            ? ` · ${touchpoint.campaign}`
+                            : ""}
                         </p>
                       </li>
                     ))}

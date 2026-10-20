@@ -1,6 +1,16 @@
 import type { Metadata } from "next";
 
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+
+const sans = Geist({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-geist-sans",
+});
+const mono = Geist_Mono({
+  subsets: ["latin", "latin-ext"],
+  variable: "--font-geist-mono",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -18,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>{children}</body>
+      <body className={`${sans.variable} ${mono.variable}`}>{children}</body>
     </html>
   );
 }

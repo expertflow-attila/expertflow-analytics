@@ -250,7 +250,7 @@
       .then(function (response) {
         // 4xx other than 429 means the payload will never be accepted;
         // retrying it forever would block every later event behind it.
-        if (response.ok || (response.status >= 400 && response.status !== 429)) {
+        if (response.ok || (response.status >= 400 && response.status < 500 && response.status !== 429)) {
           queue = queue.slice(batch.length);
           persistQueue();
         }

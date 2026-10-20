@@ -6,7 +6,8 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 
 import { getTemplate } from "@/lib/funnel-templates";
-import { generateApiKey, hashApiKey } from "@/server/crypto";
+import { currencySchema, timezoneSchema } from "@/lib/config-validation";
+import { generateApiKey } from "@/server/crypto";
 import { db } from "@/server/db";
 import {
   apiKeys,
@@ -76,9 +77,9 @@ export async function registerUser(
 
 const workspaceSchema = z.object({
   organizationName: z.string().min(2).max(120),
-  timezone: z.string().min(1).max(64),
+  timezone: timezoneSchema,
   projectName: z.string().min(2).max(120),
-  baseCurrency: z.string().length(3),
+  baseCurrency: currencySchema,
   templateKey: z.string().min(1),
 });
 
@@ -159,7 +160,6 @@ export async function createWorkspace(
     .returning();
 
   const publishable = generateApiKey("pk");
-  const secret = generateApiKey("sk");
 
   await db.insert(apiKeys).values([
     {
@@ -169,14 +169,6 @@ export async function createWorkspace(
       name: "Website",
       keyPlain: publishable,
       keyLast4: publishable.slice(-4),
-    },
-    {
-      organizationId: organization.id,
-      projectId: project.id,
-      type: "SECRET",
-      name: "Server events",
-      keyHash: hashApiKey(secret),
-      keyLast4: secret.slice(-4),
     },
   ]);
 
@@ -211,6 +203,11 @@ export async function createFunnelFromTemplate(params: {
   projectId: string;
   templateKey: string;
 }): Promise<string | null> {
+  const { organizationId } = await (
+    await import("@/server/tenancy")
+  ).requireProject(params.projectId, "ADMIN");
+  if (organizationId !== params.organizationId)
+    throw new Error("Project not found");
   const template = getTemplate(params.templateKey);
   if (!template) return null;
 

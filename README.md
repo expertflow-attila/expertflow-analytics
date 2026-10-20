@@ -65,6 +65,20 @@ Then sign in at http://localhost:3000 with `demo@funnelintelligence.dev` /
 `docker compose up -d` starts PostgreSQL and Redis. The app itself runs from
 `Dockerfile`, or locally with `pnpm dev` against the containers.
 
+## Project configuration
+
+Administrators can create and revoke API keys in Integrations. Copy a new server
+secret immediately: it is returned once and only its hash is stored. The same page
+saves encrypted Stripe and generic-webhook signing configuration and can disconnect
+an integration. Settings saves workspace names, timezone and attribution options.
+Base currency stays fixed to avoid relabelling historical money.
+
+Funnels includes an editor for ordered steps, event names, targets, matching mode
+and conversion window. Saving updates the analytics canvas. The editor preserves
+existing event filters; a dedicated filter builder is not included.
+
+Local browser/API/security regression tests: [evals/README.md](evals/README.md).
+
 ## Tracking
 
 Add the script to every page:

@@ -2,6 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import Link from "next/link";
 
 import { DemoDataBanner, PageBody, PageHeader } from "@/components/page";
+import { FunnelEditor } from "@/components/funnel-editor";
 import { FunnelCanvas, type CanvasNode } from "@/components/funnel-canvas";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, EmptyState, Table, Td, Th } from "@/components/ui/primitives";
@@ -27,6 +28,7 @@ export default async function FunnelsPage({
 }) {
   const { id, range: rangeParam } = await searchParams;
   const ctx = await resolveProjectContext();
+  const canEdit = ctx.role === "OWNER" || ctx.role === "ADMIN";
   const { range } = resolveRange(rangeParam);
 
   const available = await db
@@ -40,6 +42,7 @@ export default async function FunnelsPage({
       <>
         <PageHeader title="Funnels" />
         <PageBody>
+          {canEdit ? <FunnelEditor projectId={ctx.projectId} /> : null}
           <EmptyState
             title="No funnel has been built yet"
             description="A funnel is an ordered set of steps, each matching one event. Build one to see conversion, drop-off and the revenue behind each step."
@@ -70,6 +73,10 @@ export default async function FunnelsPage({
     .select({
       id: funnelNodes.id,
       kind: funnelNodes.kind,
+      name: funnelNodes.name,
+      matchRule: funnelNodes.matchRule,
+      targetConversionRate: funnelNodes.targetConversionRate,
+      stepIndex: funnelNodes.stepIndex,
       positionX: funnelNodes.positionX,
       positionY: funnelNodes.positionY,
     })
@@ -84,7 +91,10 @@ export default async function FunnelsPage({
   let biggestLeakId: string | null = null;
   let worstLoss = 0;
   for (const node of data.result.nodes) {
-    if (node.varianceToTargetPoints === null || node.varianceToTargetPoints >= 0) {
+    if (
+      node.varianceToTargetPoints === null ||
+      node.varianceToTargetPoints >= 0
+    ) {
       continue;
     }
     const perConversion =
@@ -150,6 +160,32 @@ export default async function FunnelsPage({
 
       <PageBody>
         {demo ? <DemoDataBanner /> : null}
+        {canEdit ? (
+          <>
+            <FunnelEditor
+              key={`${selectedId}-${data.funnel.updatedAt?.toISOString()}`}
+              projectId={ctx.projectId}
+              initial={{
+                id: selectedId,
+                name: data.funnel.name,
+                mode: data.funnel.mode,
+                windowDays: data.funnel.conversionWindowSeconds / 86400,
+                steps: nodeRows
+                  .sort((a, b) => a.stepIndex - b.stepIndex)
+                  .map((n) => ({
+                    id: n.id,
+                    name: n.name,
+                    eventName: n.matchRule.eventName,
+                    target:
+                      n.targetConversionRate === null
+                        ? ""
+                        : Math.round(n.targetConversionRate * 10000) / 100,
+                  })),
+              }}
+            />
+            <FunnelEditor projectId={ctx.projectId} />
+          </>
+        ) : null}
 
         <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-[var(--radius-card)] border border-border bg-surface px-4 py-3">

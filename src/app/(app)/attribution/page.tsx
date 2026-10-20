@@ -12,6 +12,7 @@ import {
   resolveProjectContext,
   resolveRange,
 } from "@/server/analytics/context";
+import { loadAttributionSettings } from "@/server/analytics/attribution-settings";
 import { loadConversions } from "@/server/analytics/queries";
 
 export const metadata = { title: "Attribution" };
@@ -32,7 +33,14 @@ export default async function AttributionPage({
   const { range: rangeParam, window: windowParam } = await searchParams;
   const ctx = await resolveProjectContext();
   const { range } = resolveRange(rangeParam);
-  const windowDays = Number(windowParam) || 90;
+  const settings = await loadAttributionSettings(ctx);
+  const requestedWindow = Number(windowParam);
+  const windowDays =
+    Number.isInteger(requestedWindow) &&
+    requestedWindow >= 1 &&
+    requestedWindow <= 365
+      ? requestedWindow
+      : settings.windowDays;
 
   const { conversions, unattributableOrders } = await loadConversions(
     ctx,
@@ -42,12 +50,22 @@ export default async function AttributionPage({
   const demo = await isDemoDataset(ctx);
 
   const options = {
+    ...settings,
     windowDays,
-    includeDirect: true,
-    includeOrganic: true,
   };
 
-  const byModel = MODELS.map((model) => ({
+  const models =
+    settings.model === "POSITION_BASED"
+      ? [
+          ...MODELS,
+          {
+            key: "POSITION_BASED" as const,
+            label: "Position-based",
+            note: "custom weights",
+          },
+        ]
+      : MODELS;
+  const byModel = models.map((model) => ({
     ...model,
     rows: attributeByChannel(conversions, { ...options, model: model.key }),
   }));
@@ -70,6 +88,12 @@ export default async function AttributionPage({
 
       <PageBody>
         {demo ? <DemoDataBanner /> : null}
+        <p className="text-xs text-muted-foreground">
+          Configured model: {settings.model} · Window: {windowDays} days ·
+          Direct: {settings.includeDirect ? "included" : "excluded"} · Organic:{" "}
+          {settings.includeOrganic ? "included" : "excluded"}. Revenue comes
+          from reconciled orders.
+        </p>
 
         {conversions.length === 0 ? (
           <EmptyState
@@ -87,7 +111,7 @@ export default async function AttributionPage({
                   <thead>
                     <tr>
                       <Th>Channel</Th>
-                      {MODELS.map((model) => (
+                      {models.map((model) => (
                         <Th key={model.key} className="text-right">
                           {model.label}
                         </Th>
@@ -201,8 +225,8 @@ export default async function AttributionPage({
                   <p className="text-sm">
                     {formatNumber(unattributableOrders)}{" "}
                     {unattributableOrders === 1 ? "purchase" : "purchases"} in
-                    this period could not be attributed at all, because no person
-                    could be resolved for them.
+                    this period could not be attributed at all, because no
+                    person could be resolved for them.
                   </p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Those purchases are excluded from every column above, so the

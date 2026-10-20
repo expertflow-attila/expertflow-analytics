@@ -1,0 +1,27 @@
+{
+  "date": "2026-10-20",
+  "base_commit": "d713a3b5fc57c792e6be144620e8f0df5fa51f08",
+  "version": "working tree fixes",
+  "production_build": "PASS",
+  "typecheck": "PASS",
+  "eslint": "PASS",
+  "vitest": {
+    "passed": 101,
+    "failed": 0,
+    "files": 10
+  },
+  "engine_evals": {
+    "passed": 8,
+    "failed": 0
+  },
+  "playwright": {
+    "startTime": "2026-10-20T08:25:55.611Z",
+    "duration": 46788.969000000005,
+    "expected": 16,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  },
+  "deployment_verified": false,
+  "ai_provider": "local mock; live provider unverified"
+}

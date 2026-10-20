@@ -1,7 +1,11 @@
+import { loadAttributionSettings } from "@/server/analytics/attribution-settings";
 import { desc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { detectAnomalies, calculateTrackingHealth } from "@/lib/analytics/anomaly-core";
+import {
+  detectAnomalies,
+  calculateTrackingHealth,
+} from "@/lib/analytics/anomaly-core";
 import {
   attributeByChannel,
   attributionConfidence,
@@ -60,13 +64,16 @@ const rangeParam = {
   properties: {
     days: {
       type: "number",
-      description: "How many days back from today. Defaults to the current view.",
+      description:
+        "How many days back from today. Defaults to the current view.",
     },
   },
   additionalProperties: false,
 };
 
-const rangeSchema = z.object({ days: z.number().int().min(1).max(730).optional() });
+const rangeSchema = z.object({
+  days: z.number().int().min(1).max(730).optional(),
+});
 
 function resolve(tools: ToolContext, days?: number): DateRange {
   if (!days) return tools.defaultRange;
@@ -76,7 +83,10 @@ function resolve(tools: ToolContext, days?: number): DateRange {
 
 function money(minor: number | null | undefined, currency: string) {
   if (minor === null || minor === undefined) return null;
-  return { minorUnits: minor, formatted: `${(minor / 100).toFixed(2)} ${currency}` };
+  return {
+    minorUnits: minor,
+    formatted: `${(minor / 100).toFixed(2)} ${currency}`,
+  };
 }
 
 async function firstFunnelId(ctx: TenantContext): Promise<string | null> {
@@ -158,14 +168,18 @@ export const ANALYTICS_TOOLS: ToolDefinition[] = [
       type: "object",
       properties: {
         days: rangeParam.properties.days,
-        funnelId: { type: "string", description: "Defaults to the newest funnel." },
+        funnelId: {
+          type: "string",
+          description: "Defaults to the newest funnel.",
+        },
       },
       additionalProperties: false,
     },
     async run(args, tools) {
       const range = resolve(tools, args.days as number | undefined);
       const funnelId =
-        (args.funnelId as string | undefined) ?? (await firstFunnelId(tools.ctx));
+        (args.funnelId as string | undefined) ??
+        (await firstFunnelId(tools.ctx));
       if (!funnelId) return { error: "This project has no funnel yet." };
 
       const data = await loadFunnel(tools.ctx, funnelId, range);
@@ -276,18 +290,17 @@ export const ANALYTICS_TOOLS: ToolDefinition[] = [
     },
     async run(args, tools) {
       const range = resolve(tools, args.days as number | undefined);
-      const model = (args.model as AttributionModel) ?? "U_SHAPED";
+      const settings = await loadAttributionSettings(tools.ctx);
+      const model = (args.model as AttributionModel) ?? settings.model;
       const { conversions, unattributableOrders } = await loadConversions(
         tools.ctx,
         range,
-        90,
+        settings.windowDays,
       );
 
       const rows = attributeByChannel(conversions, {
+        ...settings,
         model,
-        windowDays: 90,
-        includeDirect: true,
-        includeOrganic: true,
       });
 
       return {
@@ -314,12 +327,15 @@ export const ANALYTICS_TOOLS: ToolDefinition[] = [
     parameters: rangeParam,
     async run(args, tools) {
       const range = resolve(tools, args.days as number | undefined);
-      const { conversions } = await loadConversions(tools.ctx, range, 90);
+      const settings = await loadAttributionSettings(tools.ctx);
+      const { conversions } = await loadConversions(
+        tools.ctx,
+        range,
+        settings.windowDays,
+      );
 
       const rows = attributionConfidence(conversions, {
-        windowDays: 90,
-        includeDirect: true,
-        includeOrganic: true,
+        ...settings,
       });
 
       return {
@@ -391,7 +407,9 @@ export const ANALYTICS_TOOLS: ToolDefinition[] = [
           ...detectAnomalies("leads", series.leads),
           ...detectAnomalies("revenue", series.revenue),
         ]
-          .sort((a, b) => Math.abs(b.changeFraction) - Math.abs(a.changeFraction))
+          .sort(
+            (a, b) => Math.abs(b.changeFraction) - Math.abs(a.changeFraction),
+          )
           .slice(0, 20),
         note: "A day is reported only when the move is both statistically unusual and materially large. Nothing here implies a cause.",
       };
@@ -483,7 +501,8 @@ export const ANALYTICS_TOOLS: ToolDefinition[] = [
 
   {
     name: "list_top_customers",
-    description: "Highest lifetime revenue customers with their first and last touch channel.",
+    description:
+      "Highest lifetime revenue customers with their first and last touch channel.",
     schema: z.object({ limit: z.number().int().min(1).max(50).optional() }),
     parameters: {
       type: "object",

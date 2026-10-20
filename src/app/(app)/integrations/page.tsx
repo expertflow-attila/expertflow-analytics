@@ -3,6 +3,13 @@ import { eq } from "drizzle-orm";
 import { PageBody, PageHeader } from "@/components/page";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge, Table, Td, Th } from "@/components/ui/primitives";
+import { ConfigForm } from "@/components/config-form";
+import {
+  createKey,
+  revokeKey,
+  saveIntegration,
+} from "@/server/actions/configuration";
+import { Input, Label } from "@/components/ui/primitives";
 import { env } from "@/env";
 import { resolveProjectContext } from "@/server/analytics/context";
 import { db } from "@/server/db";
@@ -24,7 +31,9 @@ export default async function IntegrationsPage() {
     .from(integrations)
     .where(eq(integrations.projectId, ctx.projectId));
 
-  const publishable = keys.find((k) => k.type === "PUBLISHABLE");
+  const publishable = keys.find(
+    (k) => k.type === "PUBLISHABLE" && !k.revokedAt,
+  );
   const appUrl = env.NEXT_PUBLIC_APP_URL;
 
   const snippet = `<script
@@ -50,6 +59,111 @@ export default async function IntegrationsPage() {
       />
 
       <PageBody>
+        {ctx.role === "OWNER" || ctx.role === "ADMIN" ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Create API key</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ConfigForm action={createKey} submitLabel="Create key">
+                <input type="hidden" name="projectId" value={ctx.projectId} />
+                <Label htmlFor="keyName">Key name</Label>
+                <Input id="keyName" name="name" required maxLength={100} />
+                <Label htmlFor="keyType">Key type</Label>
+                <select
+                  id="keyType"
+                  name="type"
+                  className="block rounded-md border bg-surface p-2"
+                >
+                  <option value="SECRET">Server secret</option>
+                  <option value="PUBLISHABLE">Browser publishable</option>
+                </select>
+              </ConfigForm>
+            </CardContent>
+          </Card>
+        ) : null}
+        {ctx.role === "OWNER" || ctx.role === "ADMIN"
+          ? ["stripe", "webhook"].map((provider) => (
+              <Card key={provider}>
+                <CardHeader>
+                  <CardTitle>
+                    {provider === "stripe"
+                      ? "Configure Stripe"
+                      : "Configure generic webhook"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ConfigForm
+                    action={saveIntegration}
+                    submitLabel={`Save ${provider}`}
+                  >
+                    <input
+                      type="hidden"
+                      name="projectId"
+                      value={ctx.projectId}
+                    />
+                    <input type="hidden" name="provider" value={provider} />
+                    <Label htmlFor={`${provider}Secret`}>Signing secret</Label>
+                    <Input
+                      id={`${provider}Secret`}
+                      name="secret"
+                      type="password"
+                      autoComplete="new-password"
+                      placeholder="Leave blank to retain the saved secret"
+                    />
+                    {provider === "webhook" ? (
+                      <>
+                        <Label htmlFor="signatureHeader">
+                          Signature header
+                        </Label>
+                        <Input
+                          id="signatureHeader"
+                          name="signatureHeader"
+                          placeholder="x-signature (leave blank to retain saved header)"
+                        />
+                        <Label htmlFor="mapping">JSON field mapping</Label>
+                        <textarea
+                          id="mapping"
+                          name="mapping"
+                          className="block min-h-32 w-full rounded-md border bg-surface p-2 font-mono text-xs"
+                          placeholder={
+                            '{"event_name":"=call_booked","event_id":"id","email":"email"}'
+                          }
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Leave the mapping blank to keep the saved mapping.
+                        </p>
+                      </>
+                    ) : null}
+                  </ConfigForm>
+                  {connected.some(
+                    (i) =>
+                      i.provider === provider && i.status !== "DISCONNECTED",
+                  ) ? (
+                    <div className="mt-4">
+                      <ConfigForm
+                        action={saveIntegration}
+                        submitLabel={`Disconnect ${provider}`}
+                        confirmation="Stop accepting deliveries from this integration?"
+                      >
+                        <input
+                          type="hidden"
+                          name="projectId"
+                          value={ctx.projectId}
+                        />
+                        <input type="hidden" name="provider" value={provider} />
+                        <input
+                          type="hidden"
+                          name="operation"
+                          value="disconnect"
+                        />
+                      </ConfigForm>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
+            ))
+          : null}
         <Card>
           <CardHeader>
             <CardTitle>Install the tracking script</CardTitle>
@@ -75,8 +189,8 @@ funnel.track("purchase_completed", {}, {
 
             <p className="text-2xs leading-relaxed text-subtle-foreground">
               Call identify as early as you know who someone is. Everything they
-              did anonymously beforehand is then joined onto their journey, which
-              is what makes first-touch attribution possible.
+              did anonymously beforehand is then joined onto their journey,
+              which is what makes first-touch attribution possible.
             </p>
           </CardContent>
         </Card>
@@ -163,6 +277,7 @@ funnel.track("purchase_completed", {}, {
                   <Th>Type</Th>
                   <Th>Key</Th>
                   <Th>Last used</Th>
+                  <Th>Status / action</Th>
                 </tr>
               </thead>
               <tbody>
@@ -170,7 +285,9 @@ funnel.track("purchase_completed", {}, {
                   <tr key={key.id}>
                     <Td>{key.name}</Td>
                     <Td>
-                      <Badge tone={key.type === "SECRET" ? "warning" : "neutral"}>
+                      <Badge
+                        tone={key.type === "SECRET" ? "warning" : "neutral"}
+                      >
                         {key.type.toLowerCase()}
                       </Badge>
                     </Td>
@@ -184,15 +301,35 @@ funnel.track("purchase_completed", {}, {
                         ? key.lastUsedAt.toISOString().slice(0, 10)
                         : "never"}
                     </Td>
+                    <Td>
+                      {key.revokedAt ? (
+                        "Revoked"
+                      ) : ctx.role === "OWNER" || ctx.role === "ADMIN" ? (
+                        <ConfigForm
+                          action={revokeKey}
+                          submitLabel="Revoke"
+                          confirmation="Revoke this key? Senders using it will stop working."
+                        >
+                          <input
+                            type="hidden"
+                            name="projectId"
+                            value={ctx.projectId}
+                          />
+                          <input type="hidden" name="keyId" value={key.id} />
+                        </ConfigForm>
+                      ) : (
+                        "Active"
+                      )}
+                    </Td>
                   </tr>
                 ))}
               </tbody>
             </Table>
 
             <p className="mt-3 text-2xs leading-relaxed text-subtle-foreground">
-              The publishable key is safe in a browser — it can only write events.
-              Secret keys are stored hashed and shown once at creation; if one is
-              lost it must be replaced rather than recovered.
+              The publishable key is safe in a browser — it can only write
+              events. Secret keys are stored hashed and shown once at creation;
+              if one is lost it must be replaced rather than recovered.
             </p>
           </CardContent>
         </Card>
@@ -224,7 +361,11 @@ funnel.track("purchase_completed", {}, {
                       <Td>
                         <Badge
                           tone={
-                            integration.errorCount > 0 ? "negative" : "positive"
+                            integration.status === "DISCONNECTED"
+                              ? "neutral"
+                              : integration.status === "ERROR"
+                                ? "negative"
+                                : "positive"
                           }
                         >
                           {integration.status.toLowerCase()}
