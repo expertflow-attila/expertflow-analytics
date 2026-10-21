@@ -81,7 +81,10 @@ export async function requestPasswordReset(
       .from(users)
       .where(eq(users.email, email))
       .limit(1);
-    if (!user) return false;
+    if (!user) {
+      console.info("password-recovery: account-not-found");
+      return false;
+    }
     const [recent] = await tx
       .select({ token: verificationTokens.token })
       .from(verificationTokens)
@@ -96,7 +99,10 @@ export async function requestPasswordReset(
         ),
       )
       .limit(1);
-    if (recent) return false;
+    if (recent) {
+      console.info("password-recovery: request-cooldown");
+      return false;
+    }
     await tx
       .insert(verificationTokens)
       .values({

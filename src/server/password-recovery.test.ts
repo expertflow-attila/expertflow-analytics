@@ -13,12 +13,20 @@ vi.mock("@/env", () => ({
   },
 }));
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
 
 it("uses the provider's HTTP contract with a canonical recovery URL", async () => {
   const fetchMock = vi
     .fn()
-    .mockResolvedValue(new Response("{}", { status: 200 }));
+    .mockResolvedValue(
+      new Response(JSON.stringify({ id: "provider-message-id" }), {
+        status: 200,
+      }),
+    );
+  const log = vi.spyOn(console, "info").mockImplementation(() => {});
   vi.stubGlobal("fetch", fetchMock);
   const { token, tokenHash } = createResetToken();
   await sendPasswordResetEmail("owner@example.test", token);
@@ -38,6 +46,11 @@ it("uses the provider's HTTP contract with a canonical recovery URL", async () =
     `href="https://analytics.example.test/reset-password?token=${token}"`,
   );
   expect(hashResetToken(token)).toBe(tokenHash);
+  expect(log).toHaveBeenCalledWith("password-recovery: email-accepted", {
+    messageId: "provider-message-id",
+  });
+  expect(JSON.stringify(log.mock.calls)).not.toContain(token);
+  expect(JSON.stringify(log.mock.calls)).not.toContain("re_test_credential");
 });
 
 it("reports provider rejection without exposing provider responses or credentials", async () => {

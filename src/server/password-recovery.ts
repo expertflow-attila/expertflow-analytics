@@ -49,5 +49,25 @@ export async function sendPasswordResetEmail(
     }),
     signal: AbortSignal.timeout(10_000),
   });
-  if (!response.ok) throw new Error("PASSWORD_EMAIL_DELIVERY_FAILED");
+  const result = await response.json().catch(() => null);
+  if (!response.ok) {
+    const knownReasons = new Set([
+      "validation_error",
+      "missing_api_key",
+      "invalid_api_key",
+      "restricted_api_key",
+      "rate_limit_exceeded",
+      "application_error",
+      "daily_quota_exceeded",
+      "monthly_quota_exceeded",
+    ]);
+    console.error("password-recovery: delivery-rejected", {
+      status: response.status,
+      reason: knownReasons.has(result?.name) ? result.name : "unknown",
+    });
+    throw new Error("PASSWORD_EMAIL_DELIVERY_FAILED");
+  }
+  console.info("password-recovery: email-accepted", {
+    messageId: typeof result?.id === "string" ? result.id : "unavailable",
+  });
 }
