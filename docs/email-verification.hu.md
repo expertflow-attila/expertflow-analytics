@@ -10,6 +10,8 @@ A hitelesítetlen fiók helyes jelszóval sem léphet be. A meglévő JWT-munkam
 
 A szerveroldali `RESEND_API_KEY` és `EMAIL_FROM` beállítások közösek a jelszó-visszaállítással. A feladói domainnek ellenőrzöttnek kell lennie a Resendben. A `NEXT_PUBLIC_APP_URL` az éles alkalmazás címe legyen. E változók módosítása után új telepítés szükséges.
 
+Régebbi, kézzel létrehozott adatbázisokból hiányozhat a `verification_tokens` tábla. Ilyenkor a megfelelő éles `DATABASE_URL` mellett a `pnpm db:ensure-auth` parancs biztonságosan pótolja azt. Az ismételhető művelet csak a hiányzó táblát hozza létre, a felhasználói rekordokat nem módosítja. Új adatbázisnál továbbra is a teljes `pnpm db:migrate` szükséges.
+
 Sikertelen regisztrációs levélküldéskor a fiók megmarad megerősítetlenként, a felület pedig hibát jelez és újraküldést kínál. Az újraregisztrálás nem írhatja felül egy már létező fiók jelszavát. A `/verify-email` oldalon ismeretlen vagy már megerősített címhez is ugyanaz a nyilvános tájékoztatás jár; levél csak létező, még nem megerősített fióknak megy.
 
 ## Tokenek
