@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/primitives";
 import { auth, signIn } from "@/server/auth";
+import { AuthError } from "next-auth";
 
 export const metadata = { title: "Bejelentkezés" };
 
@@ -23,7 +24,11 @@ async function signInAction(formData: FormData) {
     if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
       throw error;
     }
-    redirect("/login?error=1");
+    redirect(
+      error instanceof AuthError && error.type === "CredentialsSignin"
+        ? "/login?error=credentials"
+        : "/login?error=unavailable",
+    );
   }
 }
 
@@ -89,7 +94,9 @@ export default async function LoginPage({
 
         {error ? (
           <p role="alert" className="text-xs text-negative">
-            Az e-mail-cím vagy a jelszó nem megfelelő.
+            {error === "unavailable"
+              ? "A bejelentkezési szolgáltatás most nem érhető el. Próbáld újra később."
+              : "Az e-mail-cím vagy a jelszó nem megfelelő."}
           </p>
         ) : null}
 

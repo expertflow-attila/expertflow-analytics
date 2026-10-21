@@ -34,7 +34,7 @@ const schema = z.object({
     ),
 
   CRON_SECRET: z.preprocess(
-    (value) => value === "" ? undefined : value,
+    (value) => (value === "" ? undefined : value),
     z.string().min(16).optional(),
   ),
   REDIS_URL: z.string().url().optional(),
@@ -42,6 +42,9 @@ const schema = z.object({
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   OLLAMA_BASE_URL: z.string().url().optional(),
+
+  RESEND_API_KEY: z.string().optional(),
+  EMAIL_FROM: z.string().optional(),
 
   FEATURE_AI_ANALYST: boolFlag(true),
   FEATURE_MCP_SERVER: boolFlag(false),

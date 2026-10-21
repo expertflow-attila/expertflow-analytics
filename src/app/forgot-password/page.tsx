@@ -18,8 +18,8 @@ export default function ForgotPasswordPage() {
           Jelszó visszaállítása
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          A jelszó-visszaállító e-mailek küldése még nincs beállítva. Kérj
-          segítséget a munkaterület rendszergazdájától.
+          Add meg a fiókod e-mail-címét. Elküldjük az új jelszó beállításához
+          szükséges hivatkozást, amely 30 percig használható.
         </p>
       </div>
 
@@ -39,6 +39,14 @@ export default function ForgotPasswordPage() {
         {state && "error" in state ? (
           <p role="alert" className="text-xs text-negative">
             {state.error}
+          </p>
+        ) : null}
+
+        {state && "ok" in state ? (
+          <p role="status" className="text-sm text-positive">
+            Ha ehhez az e-mail-címhez tartozik fiók, elküldtük a visszaállítási
+            hivatkozást. Nézd meg a beérkező és a spam mappát is. Új levelet
+            legkorábban egy perc múlva kérhetsz.
           </p>
         ) : null}
 
