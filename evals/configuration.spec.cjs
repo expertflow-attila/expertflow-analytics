@@ -1,3 +1,4 @@
+const { confirmRegistration } = require("./helpers/confirm-registration.cjs");
 const { test, expect } = require("@playwright/test");
 const postgres = require("postgres");
 const { createHmac } = require("crypto");
@@ -15,7 +16,7 @@ test("configuration, key lifecycle, funnel editing and tenant boundaries", async
     await page
       .getByRole("button", { name: "Fiók létrehozása", exact: true })
       .click();
-    await page.waitForURL(/registered/);
+    await confirmRegistration(page, email);
     await page.locator("#email").fill(email);
     await page.locator("#password").fill("demo1234");
     await page

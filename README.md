@@ -60,6 +60,11 @@ pnpm dev
 Then sign in at http://localhost:3000 with `demo@funnelintelligence.dev` /
 `demo1234`.
 
+New accounts must confirm their email address before signing in. Configure
+`RESEND_API_KEY` and `EMAIL_FROM` with a verified sending domain. Pending accounts
+can request another message at `/verify-email`. See
+[email verification](docs/email-verification.hu.md).
+
 ### With Docker
 
 `docker compose up -d` starts PostgreSQL and Redis. The app itself runs from

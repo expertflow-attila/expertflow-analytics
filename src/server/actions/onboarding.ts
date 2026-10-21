@@ -22,6 +22,7 @@ import {
   users,
 } from "@/server/db/schema";
 import { requireOrgRole, requireUser } from "@/server/tenancy";
+import { requestEmailVerification } from "@/server/email-verification";
 
 /**
  * Account and workspace creation.
@@ -31,8 +32,14 @@ import { requireOrgRole, requireUser } from "@/server/tenancy";
  */
 
 const registerSchema = z.object({
-  email: z.string().email(),
-  password: z.string().min(8, "Legalább 8 karaktert használj"),
+  email: z.string().trim().toLowerCase().email().max(254),
+  password: z
+    .string()
+    .min(8, "Legalább 8 karaktert használj")
+    .refine(
+      (value) => Buffer.byteLength(value, "utf8") <= 72,
+      "A jelszó legfeljebb 72 bájt hosszú lehet",
+    ),
   name: z.string().max(200).optional(),
 });
 
@@ -69,13 +76,22 @@ export async function registerUser(
     return { error: "Ezzel az e-mail-címmel nem hozható létre fiók" };
   }
 
-  await db.insert(users).values({
-    email,
-    name: parsed.data.name ?? null,
-    passwordHash: await hash(parsed.data.password, 10),
-  });
+  const [created] = await db
+    .insert(users)
+    .values({
+      email,
+      name: parsed.data.name ?? null,
+      passwordHash: await hash(parsed.data.password, 10),
+    })
+    .onConflictDoNothing({ target: users.email })
+    .returning({ id: users.id });
+  if (!created)
+    return { error: "Ezzel az e-mail-címmel nem hozható létre fiók" };
 
-  redirect("/login?registered=1");
+  const sent = await requestEmailVerification(email);
+  redirect(
+    "/verify-email?notice=" + ("error" in sent ? "delivery-failed" : "sent"),
+  );
 }
 
 const workspaceSchema = z.object({

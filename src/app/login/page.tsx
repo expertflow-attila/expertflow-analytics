@@ -24,6 +24,14 @@ async function signInAction(formData: FormData) {
     if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
       throw error;
     }
+    if (
+      error instanceof AuthError &&
+      error.type === "CredentialsSignin" &&
+      "code" in error &&
+      error.code === "email_unverified"
+    ) {
+      redirect("/verify-email?notice=required");
+    }
     redirect(
       error instanceof AuthError && error.type === "CredentialsSignin"
         ? "/login?error=credentials"
@@ -39,12 +47,13 @@ export default async function LoginPage({
     error?: string;
     registered?: string;
     reset?: string;
+    verified?: string;
   }>;
 }) {
   const session = await auth();
   if (session?.user) redirect("/overview");
 
-  const { error, registered, reset } = await searchParams;
+  const { error, registered, reset, verified } = await searchParams;
 
   return (
     <AuthShell>
@@ -57,7 +66,16 @@ export default async function LoginPage({
 
       {registered ? (
         <p className="mb-4 rounded-md bg-positive-subtle px-3 py-2 text-xs text-positive">
-          A fiókod elkészült. Jelentkezz be a munkaterület beállításához.
+          A belépéshez először erősítsd meg az e-mail-címedet.
+        </p>
+      ) : null}
+
+      {verified ? (
+        <p
+          role="status"
+          className="mb-4 rounded-md bg-positive-subtle px-3 py-2 text-xs text-positive"
+        >
+          Az e-mail-címedet megerősítetted. Most már bejelentkezhetsz.
         </p>
       ) : null}
 
@@ -114,6 +132,11 @@ export default async function LoginPage({
       <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
         <Link href="/register" className="text-accent hover:underline">
           Fiók létrehozása
+        </Link>
+      </p>
+      <p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+        <Link href="/verify-email" className="text-accent hover:underline">
+          Megerősítő e-mail újraküldése
         </Link>
       </p>
     </AuthShell>

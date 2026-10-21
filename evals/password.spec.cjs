@@ -3,7 +3,7 @@ const { test, expect } = require("@playwright/test");
 test("password recovery reports missing email delivery without claiming success", async ({
   page,
 }) => {
-  await page.goto("/login");
+  await page.goto("http://localhost:3103/login");
   await page.getByRole("link", { name: "Elfelejtetted a jelszavad?" }).click();
   await expect(page.locator("h1")).toHaveText("Jelszó visszaállítása");
   await page.locator("#email").fill("demo@funnelintelligence.dev");
@@ -13,7 +13,7 @@ test("password recovery reports missing email delivery without claiming success"
   await expect(page.locator('p[role="alert"]')).toContainText(
     "nincs beállítva",
   );
-  await page.goto("/forgot-password?sent=1");
+  await page.goto("http://localhost:3103/forgot-password?sent=1");
   await expect(
     page.getByText(
       "If an account exists for that email, a reset link has been sent.",

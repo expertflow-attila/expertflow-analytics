@@ -1,3 +1,4 @@
+const { confirmRegistration } = require("./helpers/confirm-registration.cjs");
 const artifactDir = require("path").join(__dirname, "artifacts");
 require("fs").mkdirSync(artifactDir, { recursive: true });
 const { test, expect } = require("@playwright/test");
@@ -12,7 +13,7 @@ test("invalid timezone must be rejected before workspace creation", async ({
   await page
     .getByRole("button", { name: "Fiók létrehozása", exact: true })
     .click();
-  await page.waitForURL(/registered/);
+  await confirmRegistration(page, email);
   await page.locator("#email").fill(email);
   await page.locator("#password").fill("demo1234");
   await page

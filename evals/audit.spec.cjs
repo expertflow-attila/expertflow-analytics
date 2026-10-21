@@ -1,3 +1,4 @@
+const { confirmRegistration } = require("./helpers/confirm-registration.cjs");
 const artifactDir = require("path").join(__dirname, "artifacts");
 require("fs").mkdirSync(artifactDir, { recursive: true });
 const { test, expect } = require("@playwright/test");
@@ -67,7 +68,10 @@ test("all analytics routes desktop and mobile", async ({ page }) => {
           .filter((e) => e.getBoundingClientRect().width > 0)
           .map((e) => e.textContent),
       }));
-      expect(item["width" + width].content, `${route} at ${width}px`).toBeLessThanOrEqual(width);
+      expect(
+        item["width" + width].content,
+        `${route} at ${width}px`,
+      ).toBeLessThanOrEqual(width);
     }
     await page.screenshot({
       path: `${artifactDir}/${route}-mobile.png`,
@@ -121,7 +125,7 @@ test("new account and empty workspace onboarding", async ({ page }) => {
   await page
     .getByRole("button", { name: "Fiók létrehozása", exact: true })
     .click();
-  await expect(page).toHaveURL(/registered=1/);
+  await confirmRegistration(page, email);
   await login(page, email);
   await expect(page).toHaveURL(/onboarding/);
   await page.locator("#organizationName").fill("Audit workspace");

@@ -18,7 +18,8 @@ export default function RegisterPage() {
           Hozd létre a fiókodat
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          A következő lépésben beállíthatod a munkaterületedet.
+          A regisztráció után e-mailben erősítsd meg a címedet. Ezután
+          bejelentkezhetsz és beállíthatod a munkaterületedet.
         </p>
       </div>
 
@@ -75,6 +76,12 @@ export default function RegisterPage() {
         Már van fiókod?{" "}
         <Link href="/login" className="text-accent hover:underline">
           Bejelentkezés
+        </Link>
+      </p>
+      <p className="mt-3 text-sm text-muted-foreground">
+        Nem érkezett meg a megerősítő levél?{" "}
+        <Link href="/verify-email" className="text-accent hover:underline">
+          Új levél kérése
         </Link>
       </p>
     </AuthShell>

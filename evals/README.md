@@ -31,24 +31,59 @@ pnpm test:engines
 pnpm typecheck
 pnpm lint
 NEXT_TURBOPACK_EXPERIMENTAL_USE_SYSTEM_TLS_CERTS=1 pnpm build
-pnpm exec next start --port 3100
 ```
 
-In a second terminal, from the repository root:
+Start the local mail recorder in a separate terminal:
 
 ```sh
-OPENAI_API_KEY=audit-local-mock NODE_OPTIONS="--require $(pwd)/evals/mock-provider.cjs" \
+node evals/helpers/password-mail-mock.cjs
+```
+
+Start the main app with local email delivery (no real messages are sent):
+
+```sh
+RESEND_API_KEY=re_local_eval_only EMAIL_FROM='Business Native <local@example.test>' \
+  NODE_OPTIONS="--require $(pwd)/evals/helpers/password-mail-hook.cjs" \
+  AUTH_URL=http://localhost:3100 NEXT_PUBLIC_APP_URL=http://localhost:3100 \
+  pnpm exec next start --port 3100
+```
+
+In another terminal, from the repository root:
+
+```sh
+OPENAI_API_KEY=audit-local-mock RESEND_API_KEY=re_local_eval_only \
+  EMAIL_FROM='Business Native <local@example.test>' \
+  NODE_OPTIONS="--require $(pwd)/evals/helpers/password-mail-hook.cjs --require $(pwd)/evals/mock-provider.cjs" \
   AUTH_URL=http://localhost:3101 NEXT_PUBLIC_APP_URL=http://localhost:3101 \
   pnpm exec next start --port 3101
 ```
 
-In a third terminal:
+The recovery scenario uses a separate origin; start it in another terminal:
+
+```sh
+RESEND_API_KEY=re_local_eval_only EMAIL_FROM='Business Native <local@example.test>' \
+  NODE_OPTIONS="--require $(pwd)/evals/helpers/password-mail-hook.cjs" \
+  AUTH_URL=http://localhost:3102 NEXT_PUBLIC_APP_URL=http://localhost:3102 \
+  pnpm exec next start --port 3102
+```
+
+The missing-provider scenario uses an explicitly unconfigured process:
+
+```sh
+RESEND_API_KEY= EMAIL_FROM= AUTH_URL=http://localhost:3103 \
+  pnpm exec next start --port 3103
+```
+
+Then run:
 
 ```sh
 pnpm test:e2e
 ```
 
 `mock-provider.cjs` intercepts provider requests locally; do not use it in deployment.
+The mail hook is also local-only. The registration helpers confirm the actual
+token from the recorded test email before signing in. The verification scenarios
+separately prove that unverified accounts cannot log in or retain old sessions.
 The security test verifies a foreign conversation is unchanged and its history is
 never sent to this mock. A positive test separately verifies own-project AI still
 works. This does not certify a real Anthropic/OpenAI/Ollama service.

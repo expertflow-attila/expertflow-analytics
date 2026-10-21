@@ -9,6 +9,7 @@ test("Hungarian authentication pages share the Business Native design", async ({
     ["/register", "Hozd létre a fiókodat"],
     ["/forgot-password", "Jelszó visszaállítása"],
     ["/reset-password", "Érvénytelen hivatkozás"],
+    ["/verify-email", "E-mail-cím megerősítése"],
     ["/missing-localization-eval-page", "Ez az oldal nem található"],
   ]) {
     await page.goto(route);

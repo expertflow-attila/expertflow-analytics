@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 
 import { env } from "@/env";
+import { emailConfigured, sendEmail } from "@/server/email";
 
 export const RESET_TTL_MS = 30 * 60 * 1000;
 export const RESET_TOKEN_PREFIX = "password-reset:";
@@ -19,7 +20,7 @@ export function createResetToken() {
 }
 
 export function passwordEmailConfigured(): boolean {
-  return Boolean(env.RESEND_API_KEY?.trim() && env.EMAIL_FROM?.trim());
+  return emailConfigured();
 }
 
 /** Credentials and recovery links must never appear in application logs. */
@@ -33,41 +34,12 @@ export async function sendPasswordResetEmail(
   url.searchParams.set("token", token);
   const link = url.toString();
   // Only this trusted, URL-encoded link is interpolated into the HTML.
-  const response = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.RESEND_API_KEY}`,
-      "Content-Type": "application/json",
-      "Idempotency-Key": hashResetToken(token),
-    },
-    body: JSON.stringify({
-      from: env.EMAIL_FROM,
-      to: [email],
-      subject: "Business Native – Jelszó visszaállítása",
-      text: `Új jelszót kértél a Business Native Analitika fiókodhoz.\n\nÚj jelszó beállítása: ${link}\n\nA hivatkozás 30 percig, egyszer használható. Ha nem te kérted, hagyd figyelmen kívül ezt a levelet.`,
-      html: `<div lang="hu"><h1>Jelszó visszaállítása</h1><p>Új jelszót kértél a Business Native Analitika fiókodhoz.</p><p><a href="${link}">Új jelszó beállítása</a></p><p>A hivatkozás 30 percig, egyszer használható. Ha nem te kérted, hagyd figyelmen kívül ezt a levelet.</p></div>`,
-    }),
-    signal: AbortSignal.timeout(10_000),
-  });
-  const result = await response.json().catch(() => null);
-  if (!response.ok) {
-    const knownReasons = new Set([
-      "validation_error",
-      "missing_api_key",
-      "invalid_api_key",
-      "restricted_api_key",
-      "rate_limit_exceeded",
-      "application_error",
-      "daily_quota_exceeded",
-      "monthly_quota_exceeded",
-    ]);
-    console.error("password-recovery: delivery-rejected", {
-      status: response.status,
-      reason: knownReasons.has(result?.name) ? result.name : "unknown",
-    });
-    throw new Error("PASSWORD_EMAIL_DELIVERY_FAILED");
-  }
-  console.info("password-recovery: email-accepted", {
-    messageId: typeof result?.id === "string" ? result.id : "unavailable",
+  await sendEmail({
+    to: email,
+    subject: "Business Native – Jelszó visszaállítása",
+    text: `Új jelszót kértél a Business Native Analitika fiókodhoz.\n\nÚj jelszó beállítása: ${link}\n\nA hivatkozás 30 percig, egyszer használható. Ha nem te kérted, hagyd figyelmen kívül ezt a levelet.`,
+    html: `<div lang="hu"><h1>Jelszó visszaállítása</h1><p>Új jelszót kértél a Business Native Analitika fiókodhoz.</p><p><a href="${link}">Új jelszó beállítása</a></p><p>A hivatkozás 30 percig, egyszer használható. Ha nem te kérted, hagyd figyelmen kívül ezt a levelet.</p></div>`,
+    idempotencyKey: hashResetToken(token),
+    context: "password-recovery",
   });
 }

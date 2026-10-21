@@ -1,3 +1,4 @@
+const { confirmRegistration } = require("./helpers/confirm-registration.cjs");
 const { test, expect } = require("@playwright/test");
 
 // Run against a locally configured mail transport: real delivery must never
@@ -15,7 +16,7 @@ test("recovery email lets a user choose a password and log back in", async ({
   await page
     .getByRole("button", { name: "Fiók létrehozása", exact: true })
     .click();
-  await page.waitForURL(/registered/);
+  await confirmRegistration(page, email);
   await page.getByRole("link", { name: "Elfelejtetted a jelszavad?" }).click();
   await page.locator("#email").fill(email.toUpperCase());
   await page
@@ -23,7 +24,9 @@ test("recovery email lets a user choose a password and log back in", async ({
     .click();
   await expect(page.getByRole("status")).toContainText("elküldtük");
   const response = await request.get("http://127.0.0.1:3199/messages");
-  const messages = (await response.json()).filter((m) => m.to.includes(email));
+  const messages = (await response.json()).filter(
+    (m) => m.to.includes(email) && m.subject.includes("Jelszó visszaállítása"),
+  );
   expect(messages).toHaveLength(1);
   const link = messages[0].text.match(
     /http:\/\/localhost:3102\/reset-password\?token=[a-f0-9]{64}/,
